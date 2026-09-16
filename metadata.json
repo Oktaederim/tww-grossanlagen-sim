@@ -1,0 +1,6 @@
+{
+  "name": "Warmwasser-Anlagenrechner & Prüftool",
+  "description": "Fachgerechtes Berechnungs- und Prüftool für Monteure zur Auslegung, Analyse und normgerechten Prüfung von Groß-Warmwasseranlagen mit Wärmepumpen, Pufferspeichern, Frischwasserstationen und Trinkwasserhygiene nach DIN 1988, DVGW W 551 und DIN 4708.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
