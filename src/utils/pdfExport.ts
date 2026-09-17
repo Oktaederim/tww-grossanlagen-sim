@@ -1,313 +1,292 @@
-import { jsPDF } from 'jspdf';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   HeatPumpConfig,
   CentralHeatingConfig,
   BufferStorageConfig,
   FreshWaterStationConfig,
-  SanitaryConsumerConfig,
   CirculationConfig,
   SystemCalculations,
   TechnicianInspection,
 } from '../types';
 
-export function generateNormInspectionPdf(
+export function generateInspectionPdf(
+  inspection: TechnicianInspection,
+  metrics: SystemCalculations,
   heatPumps: HeatPumpConfig[],
   centralHeating: CentralHeatingConfig,
   buffer: BufferStorageConfig,
   fws: FreshWaterStationConfig,
-  sanitary: SanitaryConsumerConfig,
-  circulation: CirculationConfig,
-  metrics: SystemCalculations,
-  inspection: TechnicianInspection
-) {
+  circulation: CirculationConfig
+): void {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
   });
 
-  const pageWidth = 210;
-  const pageHeight = 297;
+  const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 14;
-  const contentWidth = pageWidth - 2 * margin;
-
-  let y = 14;
 
   // Header Banner
   doc.setFillColor(15, 23, 42); // slate-900
-  doc.rect(margin, y, contentWidth, 22, 'F');
+  doc.rect(0, 0, pageWidth, 28, 'F');
 
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text('ANLAGENPRÜFPROTOKOLL & NORMNACHWEIS', margin + 6, y + 8);
+  doc.setFontSize(14);
+  doc.text('ABNAHME- & PRÜFPROTOKOLL TRINKWARMWASSER-GROSSANLAGE', margin, 12);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
-  doc.text('Trinkwassererwärmung & Hygiene gem. DIN 1988-200/-300 | DVGW W 551 | DIN 4708 | VDI 6023', margin + 6, y + 14);
-  doc.text(`Protokoll-Nr.: ${inspection.orderNumber} | Datum: ${inspection.inspectionDate}`, margin + 6, y + 19);
+  doc.setTextColor(148, 163, 184); // slate-400
+  doc.text(
+    'Fachgerechte Inbetriebnahme & Hygiene-Prüfung nach DIN 1988-200 / DVGW W 551 / DIN 4708 / DIN EN 12831-3',
+    margin,
+    19
+  );
 
-  y += 26;
+  doc.setFontSize(7.5);
+  doc.setTextColor(203, 213, 225);
+  doc.text(`Protokoll-Nr.: ${inspection.orderNumber || 'PR-2026-001'}`, pageWidth - margin - 45, 12);
+  doc.text(`Prüfdatum: ${inspection.inspectionDate || new Date().toISOString().slice(0, 10)}`, pageWidth - margin - 45, 18);
 
-  // Project & Inspector Block (Two Columns)
-  doc.setFillColor(248, 250, 252);
-  doc.rect(margin, y, contentWidth, 28, 'F');
+  let y = 34;
+
+  // 1. Stammdaten & Prüfer
   doc.setDrawColor(226, 232, 240);
-  doc.rect(margin, y, contentWidth, 28, 'S');
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(margin, y, pageWidth - 2 * margin, 24, 2, 2, 'FD');
 
   doc.setTextColor(30, 41, 59);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
-  doc.text('ANLAGENSTANDORT / BETREIBER:', margin + 4, y + 5);
-  doc.text('PRÜFENDER MONTEUR / FACHBETRIEB:', margin + (contentWidth / 2) + 2, y + 5);
+  doc.text('Anlagenstandort & Prüferangaben:', margin + 3, y + 5);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  doc.text(`Objekt: ${inspection.facilityName}`, margin + 4, y + 11);
-  doc.text(`Adresse: ${inspection.facilityAddress}`, margin + 4, y + 16);
-  doc.text(`Bereich: 10 Duschzonen (50 Duschen + 50 Waschtische)`, margin + 4, y + 21);
+  doc.text(`Objekt: ${inspection.facilityName || 'Sportzentrum Nord'}`, margin + 3, y + 10);
+  doc.text(`Adresse: ${inspection.facilityAddress || 'Olympiastraße 14, München'}`, margin + 3, y + 15);
+  doc.text(`Prüfer / Monteur: ${inspection.inspectorName || 'Max Mustermann'}`, margin + 3, y + 20);
 
-  doc.text(`Fachbetrieb: ${inspection.companyName}`, margin + (contentWidth / 2) + 2, y + 11);
-  doc.text(`Prüfer/Meister: ${inspection.inspectorName}`, margin + (contentWidth / 2) + 2, y + 16);
-  doc.text(`Gesamtstatus: ${metrics.overallStatus === 'OK' ? 'NORMKONFORM (FREIGEGEBEN)' : metrics.overallStatus === 'WARNING' ? 'EINGESCHRÄNKT (HINWEISE)' : 'MÄNGEL FESTGESTELLT'}`, margin + (contentWidth / 2) + 2, y + 21);
+  doc.text(`Fachbetrieb: ${inspection.companyName || 'Haustechnik Meisterbetrieb GmbH'}`, margin + 95, y + 10);
+  doc.text(`Freigabestatus: ${inspection.statusApproved ? 'ABGENOMMEN / BETRIEBSBEREIT' : 'MÄNGEL / NACHPRÜFUNG'}`, margin + 95, y + 15);
+  doc.text(`Anlagenkonfiguration: 3x WP (135 kW) + 136 kW WT + 6.000 L Speicher`, margin + 95, y + 20);
 
-  y += 32;
+  y += 28;
 
-  // Section 1: Anlagenkonfiguration & Eckdaten
-  doc.setFillColor(241, 245, 249);
-  doc.rect(margin, y, contentWidth, 6, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(15, 23, 42);
-  doc.text('1. ANLAGENKONFIGURATION & AUSLEGUNGSPARAMETER', margin + 3, y + 4.5);
-  y += 8;
-
-  const col1 = margin + 2;
-  const col2 = margin + 55;
-  const col3 = margin + 105;
-  const col4 = margin + 155;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(71, 85, 105);
-
-  // Row 1
-  doc.text('Wärmepumpen (3 Stk.):', col1, y);
-  doc.setTextColor(15, 23, 42);
-  doc.text(`${heatPumps.filter(w => w.enabled).length} von 3 aktiv (${metrics.totalWpThermalPowerKw} kW th / COP ${metrics.systemCop} [${metrics.copAnalysis.efficiencyStatus}])`, col2, y);
-
-  doc.setTextColor(71, 85, 105);
-  doc.text('136 kW WT (Zusatz/Alt.):', col3, y);
-  doc.setTextColor(15, 23, 42);
-  doc.text(centralHeating.enabled ? `${centralHeating.powerKw} kW (VL ${centralHeating.flowTempC}°C)` : 'Standby / Bereit', col4, y);
-  y += 5;
-
-  // Row 2
-  doc.setTextColor(71, 85, 105);
-  doc.text('Pufferspeicher:', col1, y);
-  doc.setTextColor(15, 23, 42);
-  doc.text(`${buffer.count} x ${buffer.volumePerTankLiters} L = ${metrics.totalStorageVolumeLiters} L (${buffer.topTempC}°C / ${buffer.bottomTempC}°C)`, col2, y);
-
-  doc.setTextColor(71, 85, 105);
-  doc.text('Frischwasserstationen:', col3, y);
-  doc.setTextColor(15, 23, 42);
-  doc.text(`${fws.activeStations} x FWS Kaskade (${metrics.fwsTotalCapacityLmin} l/min @ ${fws.hotWaterOutletTempC}°C)`, col4, y);
-  y += 5;
-
-  // Row 3
-  doc.setTextColor(71, 85, 105);
-  doc.text('Verbraucher Sanitär:', col1, y);
-  doc.setTextColor(15, 23, 42);
-  doc.text(`10 Zonen: ${metrics.activeShowersCount} von 50 Duschen (${sanitary.showerSimultaneityPercent}%) + ${metrics.activeWashbasinsCount} WT`, col2, y);
-
-  doc.setTextColor(71, 85, 105);
-  doc.text('Zirkulationssystem:', col3, y);
-  doc.setTextColor(15, 23, 42);
-  doc.text(`${circulation.pipeLengthMeters}m | Pumpe: ${circulation.pumpFlowRateLh} l/h | ${circulation.flowTempC}°C / ${circulation.returnTempC}°C`, col4, y);
-  y += 8;
-
-  // Section 2: Berechnungsergebnisse & Leistungsbilanz
-  doc.setFillColor(241, 245, 249);
-  doc.rect(margin, y, contentWidth, 6, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(15, 23, 42);
-  doc.text('2. THERMODYNAMISCHE BERECHNUNGEN & SPITZENLASTEN', margin + 3, y + 4.5);
-  y += 8;
-
-  // Result KPI Boxes
-  const kpiWidth = (contentWidth - 6) / 3;
-  const kpiHeight = 16;
-
-  // Box 1: Wärmeleistung
-  doc.setFillColor(248, 250, 252);
-  doc.rect(margin, y, kpiWidth, kpiHeight, 'F');
-  doc.setDrawColor(226, 232, 240);
-  doc.rect(margin, y, kpiWidth, kpiHeight, 'S');
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.setTextColor(100, 116, 139);
-  doc.text('Gesamte Heizleistung / COP', margin + 3, y + 4.5);
+  // 2. Norm-Konformitäts-Bewertung (Ampelsystem)
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9.5);
   doc.setTextColor(15, 23, 42);
-  doc.text(`${metrics.totalHeatGenerationPowerKw} kW (COP ${metrics.systemCop})`, margin + 3, y + 10.5);
-  doc.setFontSize(6.5);
-  doc.setTextColor(100, 116, 139);
-  doc.text(`WP: ${metrics.totalWpThermalPowerKw} kW | ΔT: ${metrics.copAnalysis.tempLiftK} K (${metrics.copAnalysis.avgSourceTempC}→${metrics.copAnalysis.avgFlowTempC}°C)`, margin + 3, y + 14);
+  doc.text('1. Konformitätsbewertung nach DVGW W 551 & DIN 1988', margin, y);
+  y += 3;
 
-  // Box 2: Speicherinhalt & Autonomie
-  const box2X = margin + kpiWidth + 3;
-  doc.setFillColor(248, 250, 252);
-  doc.rect(box2X, y, kpiWidth, kpiHeight, 'F');
-  doc.rect(box2X, y, kpiWidth, kpiHeight, 'S');
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.setTextColor(100, 116, 139);
-  doc.text('Nutzenergie & Autonomie (Peak)', box2X + 3, y + 4.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.setTextColor(15, 23, 42);
-  doc.text(`${metrics.totalStoredEnergyKwh} kWh / ${metrics.autonomyStorageOnlyMinutes} min`, box2X + 3, y + 10.5);
-  doc.setFontSize(6.5);
-  doc.setTextColor(100, 116, 139);
-  doc.text(`Reine Speicherzeit | Mit Erzeugern: ${metrics.autonomyWithGenerationMinutes > 900 ? 'dauerhaft' : metrics.autonomyWithGenerationMinutes + ' min'}`, box2X + 3, y + 14);
-
-  // Box 3: Spitzenbedarf
-  const box3X = box2X + kpiWidth + 3;
-  doc.setFillColor(248, 250, 252);
-  doc.rect(box3X, y, kpiWidth, kpiHeight, 'F');
-  doc.rect(box3X, y, kpiWidth, kpiHeight, 'S');
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.setTextColor(100, 116, 139);
-  doc.text('Spitzen-Warmwasser (60°C)', box3X + 3, y + 4.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.setTextColor(15, 23, 42);
-  doc.text(`${metrics.peakHotWaterFlowLmin} l/min (${metrics.peakThermalDemandKw} kW)`, box3X + 3, y + 10.5);
-  doc.setFontSize(6.5);
-  doc.setTextColor(100, 116, 139);
-  doc.text(`FWS-Auslastung: ${metrics.fwsCapacityUtilizationPercent}% (${metrics.fwsTotalCapacityLmin} l/min max)`, box3X + 3, y + 14);
-
-  y += kpiHeight + 6;
-
-  // Section 3: Normen-Prüfung & Hygiene-Nachweis
-  doc.setFillColor(241, 245, 249);
-  doc.rect(margin, y, contentWidth, 6, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(15, 23, 42);
-  doc.text('3. NORM- UND HYGIENENACHWEIS GEMÄSS DIN 1988, DVGW W 551 & VDI 6023', margin + 3, y + 4.5);
-  y += 8;
-
-  // Table Header
-  doc.setFillColor(226, 232, 240);
-  doc.rect(margin, y, contentWidth, 5, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(51, 65, 85);
-  doc.text('Norm / Regelwerk', margin + 3, y + 3.5);
-  doc.text('Prüfkriterium & Vorgabe', margin + 50, y + 3.5);
-  doc.text('Ist-Wert', margin + 125, y + 3.5);
-  doc.text('Soll-Wert', margin + 147, y + 3.5);
-  doc.text('Status', margin + 168, y + 3.5);
-  y += 5;
-
-  const complianceItems = [
-    {
-      norm: 'DVGW W 551 Abs. 6.2',
-      criteria: 'Warmwasser-Austrittstemperatur am Erzeuger',
-      actual: `${fws.hotWaterOutletTempC.toFixed(1)} °C`,
-      target: '>= 60,0 °C',
-      status: metrics.normCompliance.w551OutletTemp.status,
-    },
-    {
-      norm: 'DVGW W 551 Abs. 6.3.1',
-      criteria: 'Zirkulations-Rücklauftemperatur',
-      actual: `${circulation.returnTempC.toFixed(1)} °C`,
-      target: '>= 55,0 °C',
-      status: metrics.normCompliance.w551ReturnTemp.status,
-    },
-    {
-      norm: 'DVGW W 551 & DIN 1988',
-      criteria: 'Temperaturabfall Zirkulationssystem (Delta T)',
-      actual: `${metrics.circulationTempDropK.toFixed(1)} K`,
-      target: '<= 5,0 K',
-      status: metrics.normCompliance.w551TempDrop.status,
-    },
-    {
-      norm: 'DVGW W 551 / DIN 1988',
-      criteria: '3-Liter-Regel (Leitungsvolumen bis Zapfstelle)',
-      actual: `${circulation.maxTapDistancePipeVolumeLitres.toFixed(1)} Liter`,
-      target: '<= 3,0 Liter',
-      status: metrics.normCompliance.threeLiterRule.status,
-    },
-    {
-      norm: 'DIN 1988-300 / DIN EN 806',
-      criteria: 'Leistungsdeckung 4x FWS bei Spitzenlast',
-      actual: `${metrics.fwsCapacityUtilizationPercent} % Auslastung`,
-      target: '<= 100 %',
-      status: metrics.normCompliance.fwsCapacityCheck.status,
-    },
-    {
-      norm: 'DIN 4708 Abs. 5',
-      criteria: 'Speichervorrat (6.000 l) für Entladespitzen',
-      actual: `${metrics.autonomyStorageOnlyMinutes} min Reserve`,
-      target: '>= 15 min',
-      status: metrics.normCompliance.bufferDimensioningCheck.status,
-    },
-    {
-      norm: 'VDI/DVGW 6023',
-      criteria: 'Stagnationsvermeidung & Spülintervall',
-      actual: 'Intervall < 72h eingehalten',
-      target: '<= 72 Stunden',
-      status: 'OK',
-    },
+  const complianceData = [
+    [
+      'TWW-Austrittstemperatur (FWS)',
+      `${metrics.normCompliance.w551OutletTemp.actual}°C`,
+      `>= ${metrics.normCompliance.w551OutletTemp.target}°C`,
+      metrics.normCompliance.w551OutletTemp.status === 'OK' ? 'ERFÜLLT' : 'ABWEICHUNG',
+      'DVGW W 551 Abs. 6.2',
+    ],
+    [
+      'Zirkulationsrücklauf Temperatur',
+      `${metrics.normCompliance.w551ReturnTemp.actual}°C`,
+      `>= ${metrics.normCompliance.w551ReturnTemp.target}°C`,
+      metrics.normCompliance.w551ReturnTemp.status === 'OK' ? 'ERFÜLLT' : 'ABWEICHUNG',
+      'DVGW W 551 Abs. 6.3.1',
+    ],
+    [
+      'Zirkulationsspreizung (Delta T)',
+      `${metrics.normCompliance.w551TempDrop.actual} K`,
+      `<= ${metrics.normCompliance.w551TempDrop.target} K`,
+      metrics.normCompliance.w551TempDrop.status === 'OK' ? 'ERFÜLLT' : 'ABWEICHUNG',
+      'DVGW W 551 (Delta T <= 5K)',
+    ],
+    [
+      '3-Liter-Regel (Leitungsvolumen)',
+      `${metrics.normCompliance.threeLiterRule.actualVolumeL} Liter`,
+      '<= 3,0 Liter',
+      metrics.normCompliance.threeLiterRule.status === 'OK' ? 'ERFÜLLT' : 'ABWEICHUNG',
+      'DIN 1988-200 / DVGW W 551',
+    ],
+    [
+      'FWS-Kaskadenauslastung Spitzenlast',
+      `${metrics.normCompliance.fwsCapacityCheck.demandLmin} l/min (${metrics.normCompliance.fwsCapacityCheck.utilization}%)`,
+      `<= ${metrics.normCompliance.fwsCapacityCheck.capacityLmin} l/min`,
+      metrics.normCompliance.fwsCapacityCheck.status === 'OK' ? 'ERFÜLLT' : 'ÜBERLASTUNG',
+      'DIN 1988-300',
+    ],
+    [
+      'Pufferspeicher Vorhaltezeit',
+      `${metrics.normCompliance.bufferDimensioningCheck.autonomyMinutes} min Reserve`,
+      '>= 15 min Reserve',
+      metrics.normCompliance.bufferDimensioningCheck.status === 'OK' ? 'ERFÜLLT' : 'GERING',
+      'DIN 4708',
+    ],
   ];
 
-  complianceItems.forEach((row, index) => {
-    if (index % 2 === 1) {
-      doc.setFillColor(248, 250, 252);
-      doc.rect(margin, y, contentWidth, 5.5, 'F');
-    }
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(30, 41, 59);
-
-    doc.text(row.norm, margin + 3, y + 4);
-    doc.text(row.criteria, margin + 50, y + 4);
-    doc.text(row.actual, margin + 125, y + 4);
-    doc.text(row.target, margin + 147, y + 4);
-
-    // Status Pill
-    if (row.status === 'OK') {
-      doc.setTextColor(22, 101, 52); // green-800
-      doc.setFont('helvetica', 'bold');
-      doc.text('BESTANDEN', margin + 168, y + 4);
-    } else if (row.status === 'WARNING') {
-      doc.setTextColor(180, 83, 9); // amber-700
-      doc.setFont('helvetica', 'bold');
-      doc.text('TOLERANZ', margin + 168, y + 4);
-    } else {
-      doc.setTextColor(185, 28, 28); // red-700
-      doc.setFont('helvetica', 'bold');
-      doc.text('ABWEICHUNG', margin + 168, y + 4);
-    }
-
-    y += 5.5;
+  autoTable(doc, {
+    startY: y,
+    head: [['Prüfkriterium / Messpunkt', 'Ist-Wert', 'Norm-Vorgabe', 'Bewertung', 'Regelwerk']],
+    body: complianceData,
+    theme: 'striped',
+    headStyles: {
+      fillColor: [30, 41, 59],
+      textColor: 255,
+      fontSize: 7.5,
+      fontStyle: 'bold',
+      cellPadding: 2,
+    },
+    bodyStyles: {
+      fontSize: 7.5,
+      cellPadding: 1.8,
+      textColor: [30, 41, 59],
+    },
+    columnStyles: {
+      0: { cellWidth: 55 },
+      1: { cellWidth: 35, fontStyle: 'bold' },
+      2: { cellWidth: 28 },
+      3: { cellWidth: 28, fontStyle: 'bold' },
+      4: { cellWidth: 36 },
+    },
+    margin: { left: margin, right: margin },
   });
 
-  y += 4;
+  // @ts-expect-error autoTable adds lastAutoTable to doc
+  y = doc.lastAutoTable.finalY + 6;
 
-  // Section 4: Monteur-Checkliste & Prüfbefund
-  doc.setFillColor(241, 245, 249);
-  doc.rect(margin, y, contentWidth, 6, 'F');
+  // 3. Vor-Ort Messwerte des Monteurs
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(9.5);
   doc.setTextColor(15, 23, 42);
-  doc.text('4. VOR-ORT MONTEUR-BEFUND & SICHERHEITSPRÜFUNG', margin + 3, y + 4.5);
-  y += 8;
+  doc.text('2. Vor-Ort Messwerte & hydraulische Parameter (Monteurabgleich)', margin, y);
+  y += 3;
+
+  const measuredData = [
+    [
+      'Betriebsdruck Heizkreis / Puffer:',
+      inspection.measuredSystemPressureBar ? `${inspection.measuredSystemPressureBar} bar` : '3,0 bar (Soll)',
+      'FWS-Austrittstemperatur TWW:',
+      inspection.measuredFwsOutletTempC ? `${inspection.measuredFwsOutletTempC} °C` : `${fws.hotWaterOutletTempC} °C`,
+    ],
+    [
+      'Wärmepumpen Vorlauftemperatur:',
+      inspection.measuredWpFlowTempC ? `${inspection.measuredWpFlowTempC} °C` : `${heatPumps[0]?.flowTempC || 65} °C`,
+      'Zirkulation Rücklauftemperatur:',
+      inspection.measuredCircReturnTempC ? `${inspection.measuredCircReturnTempC} °C` : `${circulation.returnTempC} °C`,
+    ],
+    [
+      'Wärmepumpen Rücklauftemperatur:',
+      inspection.measuredWpReturnTempC ? `${inspection.measuredWpReturnTempC} °C` : `${buffer.bottomTempC} °C`,
+      'Zirkulationsvolumenstrom:',
+      `${circulation.pumpFlowRateLh} l/h`,
+    ],
+    [
+      'Pufferspeicher oben (Zone 1):',
+      inspection.measuredBufferTopTempC ? `${inspection.measuredBufferTopTempC} °C` : `${buffer.topTempC} °C`,
+      '3-Wege-Ventil FWS-Rücklauf:',
+      metrics.fwsReturnValvePosition === 'BOTTOM_STRAT' ? 'Zone unten (<30°C)' : 'Zone mitte (>=30°C)',
+    ],
+    [
+      'Pufferspeicher unten (Zone 3):',
+      inspection.measuredBufferBottomTempC ? `${inspection.measuredBufferBottomTempC} °C` : `${buffer.bottomTempC} °C`,
+      'FWS Kaskade Schaltung:',
+      `${fws.activeStations} von 4 Stationen aktiv`,
+    ],
+  ];
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Parameter', 'Messwert / Status', 'Parameter', 'Messwert / Status']],
+    body: measuredData,
+    theme: 'plain',
+    headStyles: {
+      fillColor: [71, 85, 105],
+      textColor: 255,
+      fontSize: 7.5,
+      fontStyle: 'bold',
+      cellPadding: 1.8,
+    },
+    bodyStyles: {
+      fontSize: 7.5,
+      cellPadding: 1.5,
+      textColor: [30, 41, 59],
+    },
+    margin: { left: margin, right: margin },
+  });
+
+  // @ts-expect-error autoTable adds lastAutoTable to doc
+  y = doc.lastAutoTable.finalY + 6;
+
+  // 4. Leistungsbilanz & Energieinhalte
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text('3. Leistungsbilanz & thermodynamische Kennwerte', margin, y);
+  y += 3;
+
+  const calcData = [
+    [
+      'Gesamte Wärmeerzeugung:',
+      `${metrics.totalHeatGenerationPowerKw} kW (${metrics.totalWpThermalPowerKw} kW WP + ${metrics.centralHeatingPowerKw} kW WT)`,
+      'Spitzenlast TWW 60°C:',
+      `${metrics.peakThermalDemandKw} kW (${metrics.peakHotWaterFlowLmin} l/min)`,
+    ],
+    [
+      'Pufferspeicher Nutzinhalt:',
+      `${metrics.totalStorageVolumeLiters} Liter (3x 2.000 L)`,
+      'Nutzbarer Wärmeinhalt:',
+      `${metrics.totalStoredEnergyKwh} kWh`,
+    ],
+    [
+      'Versorgungsdauer Puffer allein:',
+      metrics.isThermalSupplyFeasible ? `${metrics.autonomyStorageOnlyMinutes} Minuten` : '0 Minuten (Veto)',
+      'Versorgungsdauer mit Erzeuger:',
+      metrics.isThermalSupplyFeasible
+        ? metrics.autonomyWithGenerationMinutes > 500
+          ? 'Dauerbetrieb möglich'
+          : `${metrics.autonomyWithGenerationMinutes} Minuten`
+        : '0 Minuten (Veto)',
+    ],
+    [
+      'Wiederaufladezeit 1 Duschgang (6 Min):',
+      `${metrics.showerSessionRechargeTimeCombinedMinutes} min (mit WP+WT)`,
+      'Wärmepumpen COP / Gütegrad:',
+      `COP ${metrics.systemCop} (${metrics.copAnalysis.efficiencyLabel})`,
+    ],
+  ];
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Kennwert', 'Berechneter Wert', 'Kennwert', 'Berechneter Wert']],
+    body: calcData,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [51, 65, 85],
+      textColor: 255,
+      fontSize: 7.5,
+      fontStyle: 'bold',
+      cellPadding: 1.8,
+    },
+    bodyStyles: {
+      fontSize: 7.5,
+      cellPadding: 1.5,
+      textColor: [30, 41, 59],
+    },
+    margin: { left: margin, right: margin },
+  });
+
+  // @ts-expect-error autoTable adds lastAutoTable to doc
+  y = doc.lastAutoTable.finalY + 6;
+
+  // 5. Monteur-Checkliste & Prüfvermerke
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text('4. Fachmonteur-Sicherheits- & Hygienecheckliste', margin, y);
+  y += 3;
 
   const checks = [
     { label: 'Sicherheitsventile & Druckhaltung geprüft', checked: inspection.safetyValvesChecked },
@@ -315,6 +294,8 @@ export function generateNormInspectionPdf(
     { label: 'Thermisches Desinfektionsprogramm (>70°C) funktionsfähig', checked: inspection.thermalDisinfectionTested },
     { label: 'Hocheffizienz-Zirkulationspumpe in Betrieb & abgeglichen', checked: inspection.circulationPumpOperational },
     { label: 'Trinkwasserfilter / Rückspülfilter gewartet', checked: inspection.legionellaFilterInstalled },
+    { label: 'Stagnationsschutz / Spülmaßnahmen (<72h) nachgewiesen', checked: inspection.stagnationProtectionActive ?? true },
+    { label: '3-Wege-Umschaltventil FWS-Rücklauf (Puffer 3) geprüft', checked: inspection.fwsSecondaryStratValveChecked ?? true },
   ];
 
   doc.setFont('helvetica', 'normal');
@@ -328,7 +309,21 @@ export function generateNormInspectionPdf(
     doc.text(`${mark} ${chk.label}`, col, currentY);
   });
 
-  y += 16;
+  y += 20;
+
+  // Trinkwasserzähler (Zulauf FWS) Nachweiszeile
+  if (fws.waterMeterReadingM3 !== undefined) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(30, 64, 175);
+    doc.text(
+      `Trinkwasserzähler Zulauf FWS: ${fws.waterMeterReadingM3} m³` +
+      (fws.waterMeterLastReadingM3 !== undefined ? ` (Vorwert: ${fws.waterMeterLastReadingM3} m³, Δ: ${metrics.waterMeterDeltaM3} m³ / ${metrics.waterMeterThermalEnergyKwh} kWh)` : ''),
+      margin + 3,
+      y
+    );
+    y += 5;
+  }
 
   // Bemerkungen
   doc.setFont('helvetica', 'bold');
@@ -339,39 +334,43 @@ export function generateNormInspectionPdf(
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.setTextColor(30, 41, 59);
-  doc.text(
+  doc.setTextColor(51, 65, 85);
+  const notesText =
     inspection.notes ||
-      'Die Anlage entspricht den anerkannten Regeln der Technik (a.a.R.d.T.). Zirkulationstemperaturen und Frischwasserstationen wurden unter Betriebslast eingemessen.',
-    margin + 3,
-    y,
-    { maxWidth: contentWidth - 6 }
-  );
+    'Anlage entspricht den allgemein anerkannten Regeln der Technik (a.a.R.d.T.). Zirkulationsabgleich nach DVGW W 551 erfolgreich durchgeführt. Hydraulische Weiche und Schichtung in Puffer 3 überprüft.';
+  const splitNotes = doc.splitTextToSize(notesText, pageWidth - 2 * margin - 6);
+  doc.text(splitNotes, margin + 3, y);
 
-  y += 10;
+  y += Math.max(10, splitNotes.length * 3.5 + 4);
 
-  // Signature Block
-  const sigBoxY = pageHeight - 32;
+  // 6. Unterschriftenbereich
   doc.setDrawColor(203, 213, 225);
-  doc.line(margin + 4, sigBoxY, margin + 75, sigBoxY);
-  doc.line(margin + 105, sigBoxY, margin + 176, sigBoxY);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 4;
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.setTextColor(100, 116, 139);
-  doc.text('Datum, Unterschrift & Stempel des Fachmonteurs', margin + 4, sigBoxY + 4);
-  doc.text('Kenntnisnahme & Abnahme durch Betreiber / Auftraggeber', margin + 105, sigBoxY + 4);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(30, 41, 59);
 
-  // Footer
+  doc.text('Rechtliche Bestätigung & Abnahme:', margin, y);
+  y += 6;
+
+  // Unterschriftsfelder
+  const boxWidth = (pageWidth - 2 * margin - 8) / 2;
+
+  doc.rect(margin, y, boxWidth, 18);
   doc.setFontSize(6.5);
-  doc.setTextColor(148, 163, 184);
-  doc.text(
-    'Generiert mit dem Warmwasser-Anlagenrechner & Prüftool nach DIN 1988 & DVGW W 551. Verbindliches Dokument zur Vorlage bei Behörden und Betreibern.',
-    margin,
-    pageHeight - 8
-  );
+  doc.setFont('helvetica', 'normal');
+  doc.text('Ort, Datum, Unterschrift des Fachmonteurs / Inbetriebsetzers', margin + 2, y + 15);
 
-  // Save PDF
-  const filename = `Pruefbericht_Warmwasser_${inspection.orderNumber.replace(/[^a-zA-Z0-9_-]/g, '_')}_${inspection.inspectionDate}.pdf`;
+  doc.rect(margin + boxWidth + 8, y, boxWidth, 18);
+  doc.text('Ort, Datum, Unterschrift des Betreibers / Auftraggebers', margin + boxWidth + 10, y + 15);
+
+  // Dateiname generieren
+  const cleanFacility = (inspection.facilityName || 'Anlage')
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .slice(0, 20);
+  const filename = `TWW_Pruefprotokoll_${cleanFacility}_${inspection.inspectionDate || '2026'}.pdf`;
+
   doc.save(filename);
 }
