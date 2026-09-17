@@ -3,337 +3,457 @@ import {
   X,
   FileText,
   Download,
-  Printer,
-  CheckCircle2,
+  CheckCircle,
+  AlertTriangle,
+  ClipboardCheck,
+  ShieldCheck,
   Building,
   User,
-  Calendar,
-  ClipboardList,
+  Gauge,
+  Thermometer,
 } from 'lucide-react';
 import {
+  TechnicianInspection,
+  SystemCalculations,
   HeatPumpConfig,
   CentralHeatingConfig,
   BufferStorageConfig,
   FreshWaterStationConfig,
-  SanitaryConsumerConfig,
   CirculationConfig,
-  SystemCalculations,
-  TechnicianInspection,
 } from '../types';
-import { generateNormInspectionPdf } from '../utils/pdfExport';
+import { generateInspectionPdf } from '../utils/pdfExport';
 
 interface PdfExportModalProps {
   isOpen: boolean;
   onClose: () => void;
+  inspection: TechnicianInspection;
+  setInspection: React.Dispatch<React.SetStateAction<TechnicianInspection>>;
+  metrics: SystemCalculations;
   heatPumps: HeatPumpConfig[];
   centralHeating: CentralHeatingConfig;
   buffer: BufferStorageConfig;
   fws: FreshWaterStationConfig;
-  sanitary: SanitaryConsumerConfig;
   circulation: CirculationConfig;
-  metrics: SystemCalculations;
-  inspection: TechnicianInspection;
-  setInspection: React.Dispatch<React.SetStateAction<TechnicianInspection>>;
 }
 
 export const PdfExportModal: React.FC<PdfExportModalProps> = ({
   isOpen,
   onClose,
+  inspection,
+  setInspection,
+  metrics,
   heatPumps,
   centralHeating,
   buffer,
   fws,
-  sanitary,
   circulation,
-  metrics,
-  inspection,
-  setInspection,
 }) => {
-  const [isExporting, setIsExporting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleDownloadPdf = () => {
-    setIsExporting(true);
+  const handleDownload = () => {
+    setIsGenerating(true);
     try {
-      generateNormInspectionPdf(
+      generateInspectionPdf(
+        inspection,
+        metrics,
         heatPumps,
         centralHeating,
         buffer,
         fws,
-        sanitary,
-        circulation,
-        metrics,
-        inspection
+        circulation
       );
     } catch (err) {
-      console.error('Failed to generate PDF', err);
+      console.error('Fehler bei der PDF-Erstellung:', err);
     } finally {
-      setIsExporting(false);
+      setIsGenerating(false);
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div
-        id="pdf-export-modal-dialog"
-        className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-scale-in"
-      >
-        {/* Modal Header */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-900 text-white">
-          <div className="flex items-center gap-2.5">
-            <FileText className="w-5 h-5 text-blue-400" />
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-600 rounded-xl">
+              <FileText className="w-5 h-5 text-white" />
+            </div>
             <div>
-              <h2 className="text-base font-bold">
-                Normgerechtes Prüfprotokoll & Abnahmenachweis (PDF)
-              </h2>
+              <h3 className="text-base font-bold">
+                Fachmonteur-Abnahmeprotokoll (PDF-Export)
+              </h3>
               <p className="text-xs text-slate-300">
-                Gemäß DIN 1988-200 / DIN 1988-300, DVGW W 551 und DIN 4708
+                Offizieller Nachweis nach DIN 1988-200 / DVGW W 551 / DIN 4708 / DIN EN 12831-3
               </p>
             </div>
           </div>
           <button
-            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-5 text-xs">
-          {/* Facility & Technician Form */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-              <h3 className="font-bold text-slate-900 flex items-center gap-1.5">
-                <Building className="w-4 h-4 text-blue-600" />
-                Anlagenstandort & Betreiber
-              </h3>
-
+        {/* Content Body */}
+        <div className="p-6 overflow-y-auto space-y-6 text-sm">
+          {/* Status-Ampel Übersicht */}
+          <div
+            className={`p-4 rounded-xl border flex items-center justify-between ${
+              metrics.overallStatus === 'OK'
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                : metrics.overallStatus === 'WARNING'
+                ? 'bg-amber-50 border-amber-300 text-amber-950'
+                : 'bg-rose-50 border-rose-300 text-rose-950'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              {metrics.overallStatus === 'OK' ? (
+                <CheckCircle className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+              ) : (
+                <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0" />
+              )}
               <div>
-                <label className="text-[11px] font-medium text-slate-600 block mb-1">
-                  Objekt- / Anlagenbezeichnung
+                <h4 className="font-bold text-xs uppercase tracking-wider">
+                  Konformitätsbewertung: {metrics.overallScorePercent}% (
+                  {metrics.overallStatus === 'OK'
+                    ? 'Normgerecht'
+                    : metrics.overallStatus === 'WARNING'
+                    ? 'Eingeschränkt konform'
+                    : 'Kritische Abweichung'}
+                  )
+                </h4>
+                <p className="text-xs mt-0.5 opacity-90">
+                  {metrics.overallStatus === 'OK'
+                    ? 'Alle Kernanforderungen der DVGW W 551 und DIN 1988-200 werden rechnerisch eingehalten.'
+                    : 'Einzelne Grenzwerte oder Leistungsreserven weichen von der Normvorgabe ab.'}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <label className="text-xs font-semibold flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={inspection.statusApproved}
+                  onChange={(e) =>
+                    setInspection((prev) => ({ ...prev, statusApproved: e.target.checked }))
+                  }
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                />
+                Fachliche Freigabe erteilen
+              </label>
+            </div>
+          </div>
+
+          {/* 1. Stammdaten */}
+          <div>
+            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Building className="w-4 h-4 text-slate-500" />
+              1. Auftrags- & Anlagendaten
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1">
+                  Objekt / Liegenschaft:
                 </label>
                 <input
                   type="text"
                   value={inspection.facilityName}
                   onChange={(e) =>
-                    setInspection((prev) => ({ ...prev, facilityName: e.target.value }))
+                    setInspection((p) => ({ ...p, facilityName: e.target.value }))
                   }
-                  className="w-full px-2.5 py-1.5 rounded border border-slate-300 bg-white"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-medium text-slate-600 block mb-1">
-                  Standort-Adresse
+                <label className="text-xs font-medium text-slate-600 block mb-1">
+                  Standort / Adresse:
                 </label>
                 <input
                   type="text"
                   value={inspection.facilityAddress}
                   onChange={(e) =>
-                    setInspection((prev) => ({ ...prev, facilityAddress: e.target.value }))
+                    setInspection((p) => ({ ...p, facilityAddress: e.target.value }))
                   }
-                  className="w-full px-2.5 py-1.5 rounded border border-slate-300 bg-white"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-medium text-slate-600 block mb-1">
-                  Protokoll- / Auftragsnummer
+                <label className="text-xs font-medium text-slate-600 block mb-1">
+                  Fachhandwerksbetrieb / Monteur:
                 </label>
                 <input
                   type="text"
-                  value={inspection.orderNumber}
-                  onChange={(e) =>
-                    setInspection((prev) => ({ ...prev, orderNumber: e.target.value }))
-                  }
-                  className="w-full px-2.5 py-1.5 rounded border border-slate-300 font-mono bg-white"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-              <h3 className="font-bold text-slate-900 flex items-center gap-1.5">
-                <User className="w-4 h-4 text-emerald-600" />
-                Prüfer & Fachbetrieb
-              </h3>
-
-              <div>
-                <label className="text-[11px] font-medium text-slate-600 block mb-1">
-                  Fachbetrieb / Firma
-                </label>
-                <input
-                  type="text"
+                  placeholder="z.B. Haustechnik Meisterbetrieb GmbH"
                   value={inspection.companyName}
                   onChange={(e) =>
-                    setInspection((prev) => ({ ...prev, companyName: e.target.value }))
+                    setInspection((p) => ({ ...p, companyName: e.target.value }))
                   }
-                  className="w-full px-2.5 py-1.5 rounded border border-slate-300 bg-white"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-medium text-slate-600 block mb-1">
-                  Prüfer / SHK-Monteur
+                <label className="text-xs font-medium text-slate-600 block mb-1">
+                  Prüfdatum & Protokollnummer:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={inspection.inspectionDate}
+                    onChange={(e) =>
+                      setInspection((p) => ({ ...p, inspectionDate: e.target.value }))
+                    }
+                    className="border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500 flex-1"
+                  />
+                  <input
+                    type="text"
+                    value={inspection.orderNumber}
+                    onChange={(e) =>
+                      setInspection((p) => ({ ...p, orderNumber: e.target.value }))
+                    }
+                    placeholder="PR-2026-001"
+                    className="border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500 w-32"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Vor-Ort Messwerte des Monteurs */}
+          <div>
+            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Gauge className="w-4 h-4 text-slate-500" />
+              2. Vor-Ort Messwerte (Monteur-Messungen)
+            </h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div>
+                <label className="text-[11px] text-slate-600 block mb-1">
+                  Anlagendruck (bar):
                 </label>
                 <input
-                  type="text"
-                  value={inspection.inspectorName}
+                  type="number"
+                  step="0.1"
+                  placeholder="z.B. 3.0"
+                  value={inspection.measuredSystemPressureBar ?? ''}
                   onChange={(e) =>
-                    setInspection((prev) => ({ ...prev, inspectorName: e.target.value }))
+                    setInspection((p) => ({
+                      ...p,
+                      measuredSystemPressureBar:
+                        e.target.value === '' ? undefined : Number(e.target.value),
+                    }))
                   }
-                  className="w-full px-2.5 py-1.5 rounded border border-slate-300 bg-white"
+                  className="w-full border border-slate-300 rounded px-2.5 py-1 text-xs text-slate-800"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-medium text-slate-600 block mb-1">
-                  Prüfdatum
+                <label className="text-[11px] text-slate-600 block mb-1">
+                  TWW-Austritt gemessen (°C):
                 </label>
                 <input
-                  type="date"
-                  value={inspection.inspectionDate}
+                  type="number"
+                  step="0.5"
+                  placeholder={`${fws.hotWaterOutletTempC}`}
+                  value={inspection.measuredFwsOutletTempC ?? ''}
                   onChange={(e) =>
-                    setInspection((prev) => ({ ...prev, inspectionDate: e.target.value }))
+                    setInspection((p) => ({
+                      ...p,
+                      measuredFwsOutletTempC:
+                        e.target.value === '' ? undefined : Number(e.target.value),
+                    }))
                   }
-                  className="w-full px-2.5 py-1.5 rounded border border-slate-300 bg-white font-mono"
+                  className="w-full border border-slate-300 rounded px-2.5 py-1 text-xs text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] text-slate-600 block mb-1">
+                  Zirkulation Rücklauf (°C):
+                </label>
+                <input
+                  type="number"
+                  step="0.5"
+                  placeholder={`${circulation.returnTempC}`}
+                  value={inspection.measuredCircReturnTempC ?? ''}
+                  onChange={(e) =>
+                    setInspection((p) => ({
+                      ...p,
+                      measuredCircReturnTempC:
+                        e.target.value === '' ? undefined : Number(e.target.value),
+                    }))
+                  }
+                  className="w-full border border-slate-300 rounded px-2.5 py-1 text-xs text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] text-slate-600 block mb-1">
+                  WP Vorlauf gemessen (°C):
+                </label>
+                <input
+                  type="number"
+                  step="0.5"
+                  placeholder={`${heatPumps[0]?.flowTempC ?? 65}`}
+                  value={inspection.measuredWpFlowTempC ?? ''}
+                  onChange={(e) =>
+                    setInspection((p) => ({
+                      ...p,
+                      measuredWpFlowTempC:
+                        e.target.value === '' ? undefined : Number(e.target.value),
+                    }))
+                  }
+                  className="w-full border border-slate-300 rounded px-2.5 py-1 text-xs text-slate-800"
                 />
               </div>
             </div>
           </div>
 
-          {/* Inspection Checklist */}
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-            <h3 className="font-bold text-slate-900 flex items-center gap-1.5">
-              <ClipboardList className="w-4 h-4 text-blue-600" />
-              Sicherheits- & Funktionsprüfungen vor Ort
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-              <label className="flex items-center gap-2 cursor-pointer text-slate-700">
+          {/* 3. Sicherheits- & Hygienecheckliste */}
+          <div>
+            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <ClipboardCheck className="w-4 h-4 text-slate-500" />
+              3. Checkliste nach a.a.R.d.T. & DVGW W 551
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <label className="flex items-center gap-2 text-xs text-slate-800 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={inspection.safetyValvesChecked}
                   onChange={(e) =>
-                    setInspection((prev) => ({
-                      ...prev,
-                      safetyValvesChecked: e.target.checked,
-                    }))
+                    setInspection((p) => ({ ...p, safetyValvesChecked: e.target.checked }))
                   }
-                  className="w-4 h-4 rounded text-blue-600 accent-blue-600"
+                  className="rounded border-slate-300 text-indigo-600 w-3.5 h-3.5"
                 />
-                <span>Sicherheitsventile & Druckhaltung geprüft</span>
+                Sicherheitsventile & Druckhaltung geprüft
               </label>
 
-              <label className="flex items-center gap-2 cursor-pointer text-slate-700">
+              <label className="flex items-center gap-2 text-xs text-slate-800 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={inspection.expansionVesselsChecked}
                   onChange={(e) =>
-                    setInspection((prev) => ({
-                      ...prev,
-                      expansionVesselsChecked: e.target.checked,
-                    }))
+                    setInspection((p) => ({ ...p, expansionVesselsChecked: e.target.checked }))
                   }
-                  className="w-4 h-4 rounded text-blue-600 accent-blue-600"
+                  className="rounded border-slate-300 text-indigo-600 w-3.5 h-3.5"
                 />
-                <span>Membran-Druckausdehnungsgefäße geprüft</span>
+                Ausdehnungsgefäße Vordruck kontrolliert
               </label>
 
-              <label className="flex items-center gap-2 cursor-pointer text-slate-700">
+              <label className="flex items-center gap-2 text-xs text-slate-800 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={inspection.thermalDisinfectionTested}
                   onChange={(e) =>
-                    setInspection((prev) => ({
-                      ...prev,
-                      thermalDisinfectionTested: e.target.checked,
-                    }))
+                    setInspection((p) => ({ ...p, thermalDisinfectionTested: e.target.checked }))
                   }
-                  className="w-4 h-4 rounded text-blue-600 accent-blue-600"
+                  className="rounded border-slate-300 text-indigo-600 w-3.5 h-3.5"
                 />
-                <span>Thermisches Desinfektionsprogramm (&gt;70°C) aktivierbar</span>
+                Thermisches Desinfektionsprogramm (&gt;70°C) funktionsfähig
               </label>
 
-              <label className="flex items-center gap-2 cursor-pointer text-slate-700">
+              <label className="flex items-center gap-2 text-xs text-slate-800 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={inspection.circulationPumpOperational}
                   onChange={(e) =>
-                    setInspection((prev) => ({
-                      ...prev,
+                    setInspection((p) => ({
+                      ...p,
                       circulationPumpOperational: e.target.checked,
                     }))
                   }
-                  className="w-4 h-4 rounded text-blue-600 accent-blue-600"
+                  className="rounded border-slate-300 text-indigo-600 w-3.5 h-3.5"
                 />
-                <span>Hocheffizienz-Zirkulationspumpe hydraulisch abgeglichen</span>
+                Hocheffizienz-Zirkulationspumpe hydraulisch abgeglichen
+              </label>
+
+              <label className="flex items-center gap-2 text-xs text-slate-800 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={inspection.legionellaFilterInstalled}
+                  onChange={(e) =>
+                    setInspection((p) => ({
+                      ...p,
+                      legionellaFilterInstalled: e.target.checked,
+                    }))
+                  }
+                  className="rounded border-slate-300 text-indigo-600 w-3.5 h-3.5"
+                />
+                Trinkwasserfilter / Rückspülfilter geprüft & gereinigt
+              </label>
+
+              <label className="flex items-center gap-2 text-xs text-slate-800 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={inspection.stagnationProtectionActive ?? true}
+                  onChange={(e) =>
+                    setInspection((p) => ({
+                      ...p,
+                      stagnationProtectionActive: e.target.checked,
+                    }))
+                  }
+                  className="rounded border-slate-300 text-indigo-600 w-3.5 h-3.5"
+                />
+                Stagnationsschutz / automatische Spülung (&lt;72h) nachgewiesen
+              </label>
+
+              <label className="flex items-center gap-2 text-xs text-slate-800 cursor-pointer md:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={inspection.fwsSecondaryStratValveChecked ?? true}
+                  onChange={(e) =>
+                    setInspection((p) => ({
+                      ...p,
+                      fwsSecondaryStratValveChecked: e.target.checked,
+                    }))
+                  }
+                  className="rounded border-slate-300 text-indigo-600 w-3.5 h-3.5"
+                />
+                3-Wege-Umschaltventil FWS-Rücklauf (Puffer 3 oben/unten) funktionsgeprüft
               </label>
             </div>
           </div>
 
-          {/* Technician Notes */}
+          {/* Bemerkungen */}
           <div>
-            <label className="font-semibold text-slate-800 block mb-1">
-              Prüfbefund & Anmerkungen des Monteurs für den Betreiber:
+            <label className="text-xs font-bold text-slate-900 uppercase tracking-wider block mb-1">
+              Monteur-Bemerkungen / Auflagen:
             </label>
             <textarea
-              rows={3}
+              rows={2}
               value={inspection.notes}
-              onChange={(e) =>
-                setInspection((prev) => ({ ...prev, notes: e.target.value }))
-              }
-              className="w-full p-2.5 rounded-lg border border-slate-300 text-xs text-slate-800 bg-white"
+              onChange={(e) => setInspection((p) => ({ ...p, notes: e.target.value }))}
+              placeholder="Besondere Hinweise, z.B. Einweisung des Betreibers erfolgt, Probeentnahme für Legionellen nach 3 Monaten empfohlen..."
+              className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500"
             />
-          </div>
-
-          {/* Quick Norm Summary Pill */}
-          <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span className="font-semibold">
-                Gesamturteil: {metrics.overallStatus === 'OK' ? 'Normkonform (Freigabe erteilt)' : 'Eingeschränkt / Hinweise beachten'}
-              </span>
-            </div>
-            <span className="font-mono font-bold">{metrics.overallScorePercent}% Score</span>
           </div>
         </div>
 
-        {/* Modal Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-3.5 border-t border-slate-200 bg-slate-50">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg text-slate-700 hover:bg-slate-200 font-medium text-xs transition cursor-pointer"
-          >
-            Abbrechen
-          </button>
-
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 font-medium text-xs transition cursor-pointer"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Drucken</span>
-          </button>
-
-          <button
-            id="btn-download-pdf-action"
-            type="button"
-            disabled={isExporting}
-            onClick={handleDownloadPdf}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-sm transition cursor-pointer"
-          >
-            <Download className="w-4 h-4" />
-            <span>{isExporting ? 'Wird erstellt...' : 'PDF Protokoll herunterladen'}</span>
-          </button>
+        {/* Footer */}
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50">
+          <div className="text-xs text-slate-500">
+            Das Protokoll erzeugt ein druckfertiges DIN-A4-Dokument mit Tabellen und Unterschriftenfeldern.
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
+            >
+              Abbrechen
+            </button>
+            <button
+              onClick={handleDownload}
+              disabled={isGenerating}
+              className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm flex items-center gap-2 transition-colors disabled:opacity-50"
+            >
+              <Download className="w-4 h-4" />
+              {isGenerating ? 'Erzeuge PDF...' : 'Prüfprotokoll herunterladen (PDF)'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
