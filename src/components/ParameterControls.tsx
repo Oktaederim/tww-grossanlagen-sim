@@ -572,10 +572,13 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
 
               <div className="pt-2 border-t border-blue-200 text-[11px] text-blue-950 flex flex-wrap items-center justify-between gap-2">
                 <span>
-                  <strong>Dauer der Pufferaufladung für diesen Duschgang:</strong> mit 3x WP:{' '}
-                  <strong>{metrics.showerSessionRechargeTimeWpMinutes} Min.</strong> | mit 136 kW WT:{' '}
-                  <strong>{metrics.showerSessionRechargeTimeWtMinutes} Min.</strong> | Kombi (271 kW):{' '}
-                  <strong className="text-emerald-700">{metrics.showerSessionRechargeTimeCombinedMinutes} Min.</strong>
+                  <strong>Nachladezeit für diesen Duschgang:</strong>{' '}
+                  {metrics.showerSessionRechargeTimeCombinedMinutes !== undefined
+                    ? `Aktive Erzeuger: ${metrics.showerSessionRechargeTimeCombinedMinutes} Min.`
+                    : 'Kein Erzeuger aktiv'}{' '}
+                  | Nenn (3x WP 120 kW): <strong>{metrics.showerSessionRechargeTimeNominal3WpMinutes} Min.</strong> |{' '}
+                  Nenn (136 kW WT): <strong>{metrics.showerSessionRechargeTimeNominalWtMinutes} Min.</strong> |{' '}
+                  Nenn (Kombi 256 kW): <strong className="text-emerald-700">{metrics.showerSessionRechargeTimeNominalCombinedMinutes} Min.</strong>
                 </span>
                 <span className="font-mono text-blue-800">
                   Puffer-Autonomie: <strong>{metrics.autonomyStorageOnlyMinutes} Min.</strong>
@@ -1007,7 +1010,7 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                       className="w-full accent-amber-500 h-1.5 bg-slate-200 rounded"
                     />
                     <span className="text-[10px] text-slate-400">
-                      Trennschicht / Umschaltpunkt 3-Wege-Ventil
+                      Trennschicht / Umschaltpunkt 3-Wege-Ventil (Simulationsannahme)
                     </span>
                   </div>
                 )}
@@ -1388,7 +1391,7 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                     </span>
                   </div>
                   <div className="flex justify-between text-[10px] text-teal-800 pt-1 border-t border-teal-200/60">
-                    <span>3-Wege-Ventil Puffer 3:</span>
+                    <span>3-Wege-Ventil (Simulationsannahme):</span>
                     <span className="font-semibold">
                       {metrics.fwsReturnValvePosition === 'BOTTOM_STRAT' ? '⬇ Fußzone (RL < 30°C)' : '➡ Mittelzone (RL ≥ 30°C)'}
                     </span>

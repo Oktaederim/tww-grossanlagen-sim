@@ -124,10 +124,11 @@ export function calculateSystemMetrics(
   const peakMixedWaterFlowLmin = showerTotalMixedFlowLmin + washbasinTotalMixedFlowLmin;
 
   // Warmwasseranteil (60°C) nach Mischungsformel: V_ww = V_mix * (T_mix - T_kalt) / (T_ww - T_kalt)
+  // Mathematische Deckelung auf [0, 1] verhindert unplausible Werte bei versehentlicher Übertemperatur-Eingabe
   const deltaTWarmCold = Math.max(1, fws.hotWaterOutletTempC - fws.coldWaterInletTempC);
   
-  const showerMixRatio = Math.max(0, (sanitary.showerMixedTempC - fws.coldWaterInletTempC) / deltaTWarmCold);
-  const washbasinMixRatio = Math.max(0, (sanitary.washbasinMixedTempC - fws.coldWaterInletTempC) / deltaTWarmCold);
+  const showerMixRatio = Math.min(1.0, Math.max(0.0, (sanitary.showerMixedTempC - fws.coldWaterInletTempC) / deltaTWarmCold));
+  const washbasinMixRatio = Math.min(1.0, Math.max(0.0, (sanitary.washbasinMixedTempC - fws.coldWaterInletTempC) / deltaTWarmCold));
 
   const showerHotWaterLmin = showerTotalMixedFlowLmin * showerMixRatio;
   const washbasinHotWaterLmin = washbasinTotalMixedFlowLmin * washbasinMixRatio;
@@ -176,10 +177,29 @@ export function calculateSystemMetrics(
     fwsUtilizationStatusText = `Nicht belastbar / Untertemperatur`;
   }
 
-  const fwsSufficient = isAtNominalPrimary
-    ? (peakHotWaterFlowLmin <= fwsNominalCapacityLmin && effectiveFwsCount > 0)
-    : (effectiveFwsCount > 0 && fws.primaryFlowTempC >= 60.0);
-  const isHydraulicOverloaded = isAtNominalPrimary ? (!fwsSufficient && peakHotWaterFlowLmin > 0) : false;
+  // Dreistufige Bewertung der FWS-Kapazität (nachgewiesen ausreichend / nicht bewertbar / nachgewiesen nicht ausreichend):
+  let fwsCapacityEvaluation: 'PROVEN_SUFFICIENT' | 'UNPROVEN_AT_OPERATING_POINT' | 'PROVEN_INSUFFICIENT';
+  if (effectiveFwsCount === 0 && peakHotWaterFlowLmin > 0) {
+    fwsCapacityEvaluation = 'PROVEN_INSUFFICIENT';
+  } else if (fws.primaryFlowTempC < 60.0) {
+    fwsCapacityEvaluation = 'PROVEN_INSUFFICIENT';
+  } else if (isAtNominalPrimary) {
+    fwsCapacityEvaluation = peakHotWaterFlowLmin <= fwsNominalCapacityLmin
+      ? 'PROVEN_SUFFICIENT'
+      : 'PROVEN_INSUFFICIENT';
+  } else {
+    // Unterhalb 70 °C (z. B. 65 °C):
+    // Liegt die Zapfung selbst über der 70°C-Nennleistung, ist die Station sicher unzureichend.
+    if (peakHotWaterFlowLmin > fwsNominalCapacityLmin) {
+      fwsCapacityEvaluation = 'PROVEN_INSUFFICIENT';
+    } else {
+      // Ansonsten rechnerisch unbestimmt, da Hersteller-Kennlinien bei 65°C Primär-VL noch nicht vorliegen.
+      fwsCapacityEvaluation = 'UNPROVEN_AT_OPERATING_POINT';
+    }
+  }
+
+  const fwsSufficient = fwsCapacityEvaluation === 'PROVEN_SUFFICIENT';
+  const isHydraulicOverloaded = fwsCapacityEvaluation === 'PROVEN_INSUFFICIENT' && peakHotWaterFlowLmin > 0;
 
   // Erforderlicher Primär-Heizwasservolumenstrom (l/h)
   const primaryDeltaT = Math.max(2, fws.primaryFlowTempC - fws.primaryReturnTempC);
@@ -188,13 +208,13 @@ export function calculateSystemMetrics(
       ? (peakThermalDemandKw / (SPECIFIC_HEAT_WATER_KWH_PER_L_K * primaryDeltaT))
       : 0;
 
-  // Reale Hydraulik: Primärrücklauf-Einspeisung über 3-Wege-Umschaltventil in Puffer 3
+  // Reale Hydraulik: Primärrücklauf-Einspeisung über 3-Wege-Umschaltventil in Puffer 3 (Simulationsannahme)
   const fwsReturnValvePosition: 'BOTTOM_STRAT' | 'MID_STRAT' =
     fws.primaryReturnTempC < 30.0 ? 'BOTTOM_STRAT' : 'MID_STRAT';
   const fwsReturnValveReason =
     fws.primaryReturnTempC < 30.0
-      ? `FWS-Rücklauf (${fws.primaryReturnTempC}°C < 30°C): Ventil schaltet in Tiefzone Puffer 3 (Ideal für WP-Eintritt).`
-      : `FWS-Rücklauf (${fws.primaryReturnTempC}°C ≥ 30°C): Ventil schaltet in Mittelzone Puffer 3 (Schutz vor Schichtungsstörung).`;
+      ? `Simulationsannahme für mögliche Rücklaufeinschichtung: FWS-Rücklauf (${fws.primaryReturnTempC}°C < 30°C) rechnerisch in Tiefzone Puffer 3 geschichtet (in Bestandsunterlagen nicht als bestätigte Regelstrategie dokumentiert).`
+      : `Simulationsannahme für mögliche Rücklaufeinschichtung: FWS-Rücklauf (${fws.primaryReturnTempC}°C ≥ 30°C) rechnerisch in Mittelzone Puffer 3 geschichtet (in Bestandsunterlagen nicht als bestätigte Regelstrategie dokumentiert).`;
 
   // 4. Speicher-Energetik (3 x 2000L = 6000L) - 3 Stufen
   const totalStorageVolumeLiters = buffer.count * buffer.volumePerTankLiters;
@@ -399,18 +419,55 @@ export function calculateSystemMetrics(
   ) / 1000;
 
   // Wiederaufladezeiten für genau diese entnommene Duschgang-Energie:
-  const wpPower = totalWpThermalPowerKw > 0 ? totalWpThermalPowerKw : 120.0;
-  const showerSessionRechargeTimeWpMinutes = Math.round((showerSessionEnergyKwh / wpPower) * 60 * 10) / 10;
+  // Feste Referenzwerte bei voller Nennleistung aller Komponenten:
+  const nominal3WpPowerKw = 120.0; // 3x Mitsubishi QAHV à 40 kW Nennleistung
+  const nominalWtPowerKw = 136.0;  // 136 kW Plattenwärmetauscher Nennleistung
+  const nominalCombinedPowerKw = nominal3WpPowerKw + nominalWtPowerKw; // 256 kW
 
-  const wtPower = centralHeating.powerKw > 0 ? centralHeating.powerKw : 136.0;
-  const showerSessionRechargeTimeWtMinutes = Math.round((showerSessionEnergyKwh / wtPower) * 60 * 10) / 10;
+  const showerSessionRechargeTimeNominal3WpMinutes =
+    Math.round((showerSessionEnergyKwh / nominal3WpPowerKw) * 60 * 10) / 10;
+  const showerSessionRechargeTimeNominalWtMinutes =
+    Math.round((showerSessionEnergyKwh / nominalWtPowerKw) * 60 * 10) / 10;
+  const showerSessionRechargeTimeNominalCombinedMinutes =
+    Math.round((showerSessionEnergyKwh / nominalCombinedPowerKw) * 60 * 10) / 10;
 
-  const combinedPower = wpPower + wtPower;
-  const showerSessionRechargeTimeCombinedMinutes = Math.round((showerSessionEnergyKwh / combinedPower) * 60 * 10) / 10;
+  // Dynamische Zeiten basierend auf aktuell tatsächlich aktiven Erzeugern (ohne fiktive Ersatzleistung):
+  const showerSessionRechargeTimeWpMinutes =
+    totalWpThermalPowerKw > 0
+      ? Math.round((showerSessionEnergyKwh / totalWpThermalPowerKw) * 60 * 10) / 10
+      : undefined;
 
-  const fullStorageRechargeHoursWp = Math.round((storageReheatEnergyNeededKwh / wpPower) * 10) / 10;
-  const fullStorageRechargeHoursWt = Math.round((storageReheatEnergyNeededKwh / wtPower) * 10) / 10;
-  const fullStorageRechargeHoursCombined = Math.round((storageReheatEnergyNeededKwh / combinedPower) * 10) / 10;
+  const showerSessionRechargeTimeWtMinutes =
+    centralHeating.powerKw > 0
+      ? Math.round((showerSessionEnergyKwh / centralHeating.powerKw) * 60 * 10) / 10
+      : undefined;
+
+  const totalActiveGenPowerKw = totalWpThermalPowerKw + centralHeating.powerKw;
+  const showerSessionRechargeTimeCombinedMinutes =
+    totalActiveGenPowerKw > 0
+      ? Math.round((showerSessionEnergyKwh / totalActiveGenPowerKw) * 60 * 10) / 10
+      : undefined;
+
+  // Ladedauern Gesamtspeicher (6.000 L von minUsableTemp auf Soll 65°C):
+  const fullStorageRechargeHoursNominal3Wp =
+    Math.round((storageReheatEnergyNeededKwh / nominal3WpPowerKw) * 10) / 10;
+  const fullStorageRechargeHoursNominalWt =
+    Math.round((storageReheatEnergyNeededKwh / nominalWtPowerKw) * 10) / 10;
+  const fullStorageRechargeHoursNominalCombined =
+    Math.round((storageReheatEnergyNeededKwh / nominalCombinedPowerKw) * 10) / 10;
+
+  const fullStorageRechargeHoursWp =
+    totalWpThermalPowerKw > 0
+      ? Math.round((storageReheatEnergyNeededKwh / totalWpThermalPowerKw) * 10) / 10
+      : undefined;
+  const fullStorageRechargeHoursWt =
+    centralHeating.powerKw > 0
+      ? Math.round((storageReheatEnergyNeededKwh / centralHeating.powerKw) * 10) / 10
+      : undefined;
+  const fullStorageRechargeHoursCombined =
+    totalActiveGenPowerKw > 0
+      ? Math.round((storageReheatEnergyNeededKwh / totalActiveGenPowerKw) * 10) / 10
+      : undefined;
 
   // 9. Normen- und Hygiene-Prüfungen
   const w551OutletStatus =
@@ -440,10 +497,10 @@ export function calculateSystemMetrics(
       : 'WARNING';
 
   const fwsCapStatus =
-    effectiveFwsCount > 0 && fwsCapacityUtilizationPercent <= 90
-      ? 'OK'
-      : effectiveFwsCount > 0 && fwsCapacityUtilizationPercent <= 100
+    fwsCapacityEvaluation === 'UNPROVEN_AT_OPERATING_POINT'
       ? 'WARNING'
+      : fwsCapacityEvaluation === 'PROVEN_SUFFICIENT'
+      ? 'OK'
       : 'ERROR';
 
   const bufferDimStatus =
@@ -486,9 +543,11 @@ export function calculateSystemMetrics(
     },
     fwsCapacityCheck: {
       status: fwsCapStatus as 'OK' | 'WARNING' | 'ERROR',
-      utilization: fwsCapacityUtilizationPercent,
+      utilization: fwsCapacityUtilizationPercent ?? 0,
       rule: 'DIN 1988-300 / DIN EN 806 Spitzenlast',
-      description: `Spitzendurchfluss: ${fwsTotalCapacityLmin.toFixed(1)} l/min Gesamtkapazität bei ${effectiveFwsCount} FWS.`,
+      description: fwsCapacityEvaluation === 'UNPROVEN_AT_OPERATING_POINT'
+        ? `Hersteller-Leistungsdaten bei ${fws.primaryFlowTempC}°C Primär-VL noch nicht nachgewiesen. Nennwert bei 70°C: ${fwsNominalCapacityLmin.toFixed(1)} l/min.`
+        : `Spitzendurchfluss: ${peakHotWaterFlowLmin} l/min bei ${fwsTotalCapacityLmin.toFixed(1)} l/min Gesamtkapazität (${effectiveFwsCount} FWS).`,
     },
     bufferDimensioningCheck: {
       status: bufferDimStatus as 'OK' | 'WARNING' | 'ERROR',
@@ -505,7 +564,7 @@ export function calculateSystemMetrics(
     },
   };
 
-  // Gesamtbewertung
+  // Gesamtbewertung (qualitativ: OK = unauffällig, WARNING = Hinweise vorhanden, ERROR = Prüfung erforderlich)
   const errorCount = Object.values(normCompliance).filter((item) => item.status === 'ERROR').length;
   const warningCount = Object.values(normCompliance).filter((item) => item.status === 'WARNING').length;
 
@@ -563,15 +622,15 @@ export function calculateSystemMetrics(
     efficiencyDescription = `Großer Temperaturhub (ΔT = ${tempLiftK} K) oder erhöhte Pufferrücklauftemperatur. Berechneter Modell-COP ${systemCop}; erhöhter elektrischer Leistungsbedarf.`;
   } else {
     efficiencyStatus = 'CRITICAL';
-    efficiencyLabel = 'Kritischer Bereich (WT zuschalten)';
+    efficiencyLabel = 'Niedriger Effizienzbereich (Modell)';
     efficiencyBadgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
-    efficiencyDescription = `Extrem ungünstiger Temperaturhub (Modell-COP < 2.3). Zuschaltung des 136 kW Plattenwärmetauschers empfohlen!`;
+    efficiencyDescription = `Sehr großer Temperaturhub oder ungünstige Quellentemperatur (Modell-COP < 2,3). Vergleich mit Zentralheizung hinsichtlich verfügbarer Leistung und Wärmekosten prüfen.`;
   }
 
   const monteurTips: string[] = [];
   if (buffer.bottomTempC > 30) {
     monteurTips.push(
-      `Pufferrücklauf liegt bei ${buffer.bottomTempC}°C (Soll: ≤ 30°C). 3-Wege-Ventil schaltet FWS-Rücklauf in Puffer-Mitte, um WP-COP nicht weiter zu belasten.`
+      `Pufferrücklauf liegt bei ${buffer.bottomTempC}°C (Soll: ≤ 30°C). Simulationsannahme: Mögliche Rücklaufeinschichtung in Puffer-Mitte prüfen (in Bestandsunterlagen noch nicht bestätigt).`
     );
   } else {
     monteurTips.push(
@@ -580,7 +639,7 @@ export function calculateSystemMetrics(
   }
   if (avgSourceTempC < 4) {
     monteurTips.push(
-      `Niedrige Quellentemperatur (${avgSourceTempC}°C): Bei Spitzenlast empfiehlt sich Unterstützung durch den 136 kW Wärmetauscher.`
+      `Niedrige Quellentemperatur (${avgSourceTempC}°C): Vergleich mit Zentralheizung hinsichtlich verfügbarer Leistung und Wärmekosten prüfen.`
     );
   }
   monteurTips.push(
@@ -670,6 +729,7 @@ export function calculateSystemMetrics(
     fwsCapacityUtilizationPercent,
     fwsUtilizationStatusText,
     fwsSufficient,
+    fwsCapacityEvaluation,
     fwsOperatingRating,
     fwsOperatingNotice,
     requiredPrimaryFlowLh: Math.round(requiredPrimaryFlowLh),
@@ -698,11 +758,17 @@ export function calculateSystemMetrics(
     showerSessionTotalHot60Liters,
     showerSessionEnergyKwh,
     showerSessionRechargeTimeWpMinutes,
+    showerSessionRechargeTimeNominal3WpMinutes,
     showerSessionRechargeTimeWtMinutes,
+    showerSessionRechargeTimeNominalWtMinutes,
     showerSessionRechargeTimeCombinedMinutes,
+    showerSessionRechargeTimeNominalCombinedMinutes,
     fullStorageRechargeHoursWp,
+    fullStorageRechargeHoursNominal3Wp,
     fullStorageRechargeHoursWt,
+    fullStorageRechargeHoursNominalWt,
     fullStorageRechargeHoursCombined,
+    fullStorageRechargeHoursNominalCombined,
     circulationLossKw: Math.round(circulationLossKw * 100) / 100,
     circulationTempDropK: Math.round(circulationTempDropK * 10) / 10,
     circulationPumpMinFlowLh,

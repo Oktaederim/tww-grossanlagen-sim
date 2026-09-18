@@ -312,8 +312,8 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
                 </div>
                 <p className="text-slate-700 leading-relaxed">
                   Bei Ausfall oder Wartung der Wärmepumpen, während EVU-Sperrzeiten oder bei extrem tiefen Außentemperaturen
-                  übernimmt der 136 kW Wärmetauscher autark die komplette Pufferladung. Mit 136 kW können 6.000 Liter
-                  Puffervolumen in nur <strong>{metrics.fullStorageRechargeHoursWt} Stunden</strong> von 55°C auf 65°C
+                  übernimmt der 136 kW Wärmetauscher autark die Pufferladung. Mit 136 kW Nennleistung können 6.000 Liter
+                  Puffervolumen in rechnerisch <strong>{metrics.fullStorageRechargeHoursNominalWt} Stunden</strong> von 55°C auf 65°C
                   aufgeheizt werden.
                 </p>
               </div>
@@ -347,27 +347,47 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 <div className="bg-slate-800 p-2.5 rounded border border-slate-700">
-                  <span className="text-slate-400 block text-[10px]">Reiner WP-Betrieb (120 kW)</span>
-                  <span className="text-base font-bold text-white font-mono">
-                    {metrics.showerSessionRechargeTimeWpMinutes} Min.
+                  <span className="text-slate-400 block text-[10px]">
+                    {metrics.totalWpThermalPowerKw > 0
+                      ? `Aktive WP (${metrics.totalWpThermalPowerKw.toFixed(0)} kW)`
+                      : 'WP (nicht aktiv)'}
                   </span>
-                  <span className="text-[10px] text-slate-400 block mt-0.5">Wiederaufladedauer</span>
+                  <span className="text-base font-bold text-white font-mono">
+                    {metrics.showerSessionRechargeTimeWpMinutes !== undefined
+                      ? `${metrics.showerSessionRechargeTimeWpMinutes} Min.`
+                      : '–'}
+                  </span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    Nenn (3x 40 kW = 120 kW): {metrics.showerSessionRechargeTimeNominal3WpMinutes} Min.
+                  </span>
                 </div>
 
                 <div className="bg-slate-800 p-2.5 rounded border border-slate-700">
-                  <span className="text-slate-400 block text-[10px]">Reiner 136 kW WT-Betrieb</span>
-                  <span className="text-base font-bold text-orange-300 font-mono">
-                    {metrics.showerSessionRechargeTimeWtMinutes} Min.
+                  <span className="text-slate-400 block text-[10px]">
+                    {metrics.centralHeatingPowerKw > 0
+                      ? `WT aktiv (${metrics.centralHeatingPowerKw} kW)`
+                      : 'WT (Standby)'}
                   </span>
-                  <span className="text-[10px] text-slate-400 block mt-0.5">Alternative Heizung</span>
+                  <span className="text-base font-bold text-orange-300 font-mono">
+                    {metrics.showerSessionRechargeTimeWtMinutes !== undefined
+                      ? `${metrics.showerSessionRechargeTimeWtMinutes} Min.`
+                      : '–'}
+                  </span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    Nenn (136 kW): {metrics.showerSessionRechargeTimeNominalWtMinutes} Min.
+                  </span>
                 </div>
 
                 <div className="bg-slate-800 p-2.5 rounded border border-orange-500/50">
-                  <span className="text-orange-400 block text-[10px]">Hybrid: WP + 136 kW WT (256 kW)</span>
+                  <span className="text-orange-400 block text-[10px]">Aktive Erzeuger</span>
                   <span className="text-base font-bold text-emerald-400 font-mono">
-                    {metrics.showerSessionRechargeTimeCombinedMinutes} Min.
+                    {metrics.showerSessionRechargeTimeCombinedMinutes !== undefined
+                      ? `${metrics.showerSessionRechargeTimeCombinedMinutes} Min.`
+                      : '–'}
                   </span>
-                  <span className="text-[10px] text-emerald-300 block mt-0.5">Turbo-Peak-Booster!</span>
+                  <span className="text-[10px] text-emerald-300 block mt-0.5">
+                    Nenn (WP+WT 256 kW): {metrics.showerSessionRechargeTimeNominalCombinedMinutes} Min.
+                  </span>
                 </div>
               </div>
             </div>
@@ -452,19 +472,23 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
               </div>
 
               <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-                <span className="text-[11px] text-slate-500 font-medium block">Vollladezeit mit 3x WP</span>
+                <span className="text-[11px] text-slate-500 font-medium block">Vollladezeit Nenn 3x WP</span>
                 <span className="text-base font-bold text-slate-900 font-mono">
-                  {metrics.fullStorageRechargeHoursWp} h
+                  {metrics.fullStorageRechargeHoursNominal3Wp} h
                 </span>
-                <span className="text-[10px] text-slate-500 block mt-0.5">Von 55°C auf 65°C (135 kW)</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">
+                  Von 55°C auf 65°C bei 120 kW Nennleistung{metrics.fullStorageRechargeHoursWp !== undefined ? ` (aktiv: ${metrics.fullStorageRechargeHoursWp} h)` : ''}
+                </span>
               </div>
 
               <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-                <span className="text-[11px] text-slate-500 font-medium block">Vollladezeit mit WP + 136 kW WT</span>
+                <span className="text-[11px] text-slate-500 font-medium block">Vollladezeit Nenn Kombi</span>
                 <span className="text-base font-bold text-emerald-600 font-mono">
-                  {metrics.fullStorageRechargeHoursCombined} h
+                  {metrics.fullStorageRechargeHoursNominalCombined} h
                 </span>
-                <span className="text-[10px] text-slate-500 block mt-0.5">Mit 271 kW Turbo-Nachladung</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">
+                  WP + 136 kW WT (256 kW Nenn){metrics.fullStorageRechargeHoursCombined !== undefined ? ` (aktiv: ${metrics.fullStorageRechargeHoursCombined} h)` : ''}
+                </span>
               </div>
             </div>
 

@@ -117,13 +117,12 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
               )}
               <div>
                 <h4 className="font-bold text-xs uppercase tracking-wider">
-                  Konformitätsbewertung: {metrics.overallScorePercent}% (
+                  Betriebs-Gesamtstatus:{' '}
                   {metrics.overallStatus === 'OK'
-                    ? 'Normgerecht'
+                    ? 'Unauffällig (Normgerecht)'
                     : metrics.overallStatus === 'WARNING'
-                    ? 'Eingeschränkt konform'
-                    : 'Kritische Abweichung'}
-                  )
+                    ? 'Hinweise vorhanden (Prüfung empfohlen)'
+                    : 'Prüfung erforderlich (Kritische Abweichung)'}
                 </h4>
                 <p className="text-xs mt-0.5 opacity-90">
                   {metrics.overallStatus === 'OK'

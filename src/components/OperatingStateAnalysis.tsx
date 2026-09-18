@@ -568,35 +568,59 @@ export const OperatingStateAnalysis: React.FC<OperatingStateAnalysisProps> = ({
 
               <div className="grid grid-cols-3 gap-2">
                 <div className="p-2 rounded-lg bg-white border border-slate-200 text-center">
-                  <span className="text-[10px] text-slate-500 block">Mit 3x WP (135 kW)</span>
+                  <span className="text-[10px] text-slate-500 block">
+                    {metrics.totalWpThermalPowerKw > 0
+                      ? `Aktive WP (${metrics.totalWpThermalPowerKw.toFixed(0)} kW)`
+                      : 'WP (nicht aktiv)'}
+                  </span>
                   <strong className="text-sm font-mono text-slate-900 block mt-1">
-                    {metrics.showerSessionRechargeTimeWpMinutes} Min.
+                    {metrics.showerSessionRechargeTimeWpMinutes !== undefined
+                      ? `${metrics.showerSessionRechargeTimeWpMinutes} Min.`
+                      : '–'}
                   </strong>
-                  <span className="text-[9px] text-slate-400 block mt-0.5">Wärmepumpen</span>
+                  <span className="text-[9px] text-slate-400 block mt-0.5">
+                    Nenn (3x WP 120 kW): {metrics.showerSessionRechargeTimeNominal3WpMinutes} Min.
+                  </span>
                 </div>
 
                 <div className="p-2 rounded-lg bg-white border border-slate-200 text-center">
-                  <span className="text-[10px] text-slate-500 block">Mit 136 kW WT</span>
+                  <span className="text-[10px] text-slate-500 block">
+                    {metrics.centralHeatingPowerKw > 0
+                      ? `WT aktiv (${metrics.centralHeatingPowerKw} kW)`
+                      : 'WT (Standby)'}
+                  </span>
                   <strong className="text-sm font-mono text-orange-600 block mt-1">
-                    {metrics.showerSessionRechargeTimeWtMinutes} Min.
+                    {metrics.showerSessionRechargeTimeWtMinutes !== undefined
+                      ? `${metrics.showerSessionRechargeTimeWtMinutes} Min.`
+                      : '–'}
                   </strong>
-                  <span className="text-[9px] text-slate-400 block mt-0.5">Alternative Heizung</span>
+                  <span className="text-[9px] text-slate-400 block mt-0.5">
+                    Nenn (136 kW): {metrics.showerSessionRechargeTimeNominalWtMinutes} Min.
+                  </span>
                 </div>
 
                 <div className="p-2 rounded-lg bg-white border border-orange-300 text-center bg-orange-50/40">
-                  <span className="text-[10px] text-orange-800 font-semibold block">WP + 136 kW WT</span>
+                  <span className="text-[10px] text-orange-800 font-semibold block">Aktive Erzeuger</span>
                   <strong className="text-sm font-mono text-emerald-700 block mt-1">
-                    {metrics.showerSessionRechargeTimeCombinedMinutes} Min.
+                    {metrics.showerSessionRechargeTimeCombinedMinutes !== undefined
+                      ? `${metrics.showerSessionRechargeTimeCombinedMinutes} Min.`
+                      : '– (keine aktiv)'}
                   </strong>
-                  <span className="text-[9px] text-emerald-600 font-medium block mt-0.5">271 kW Turbo!</span>
+                  <span className="text-[9px] text-emerald-600 font-medium block mt-0.5">
+                    Nenn (WP+WT 256 kW): {metrics.showerSessionRechargeTimeNominalCombinedMinutes} Min.
+                  </span>
                 </div>
               </div>
 
               {/* Complete storage recharge comparison */}
-              <div className="pt-2 border-t border-slate-200 text-[11px] text-slate-600 flex justify-between items-center">
+              <div className="pt-2 border-t border-slate-200 text-[11px] text-slate-600 flex flex-col sm:flex-row justify-between sm:items-center gap-1">
                 <span>Vollständige Pufferaufladung (6.000 L, 55°C → 65°C):</span>
                 <span className="font-mono font-bold text-slate-800">
-                  WP: {metrics.fullStorageRechargeHoursWp} h | WT: {metrics.fullStorageRechargeHoursWt} h | Kombi: {metrics.fullStorageRechargeHoursCombined} h
+                  WP: {metrics.fullStorageRechargeHoursWp !== undefined ? `${metrics.fullStorageRechargeHoursWp} h` : '–'}{' '}
+                  (Nenn: {metrics.fullStorageRechargeHoursNominal3Wp} h) |{' '}
+                  WT: {metrics.fullStorageRechargeHoursWt !== undefined ? `${metrics.fullStorageRechargeHoursWt} h` : '–'}{' '}
+                  (Nenn: {metrics.fullStorageRechargeHoursNominalWt} h) |{' '}
+                  Kombi: {metrics.fullStorageRechargeHoursCombined !== undefined ? `${metrics.fullStorageRechargeHoursCombined} h` : '–'}
                 </span>
               </div>
             </div>

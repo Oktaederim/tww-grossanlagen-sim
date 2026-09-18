@@ -64,36 +64,29 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
           </p>
         </div>
 
-        {/* Global Compliance Score Gauge */}
-        <div className="flex items-center gap-3 bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200">
-          <div className="text-right">
+        {/* Qualitativer Betriebs-Gesamtstatus (ohne normative Scheingenauigkeit eines Prozentindex) */}
+        <div className="flex items-center gap-3 bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200">
+          <div className="text-right sm:text-left">
             <span className="text-[10px] uppercase font-semibold text-slate-400 block">
-              Plausibilitäts-Index
+              Betriebs-Gesamtstatus
             </span>
-            <span
-              className={`text-lg font-bold font-mono ${
-                metrics.overallScorePercent >= 90
-                  ? 'text-emerald-700'
-                  : metrics.overallScorePercent >= 70
-                  ? 'text-amber-600'
-                  : 'text-rose-600'
-              }`}
-            >
-              {metrics.overallScorePercent} / 100 %
-            </span>
-          </div>
-
-          <div className="w-16 h-12 rounded-full border-4 border-slate-200 flex items-center justify-center relative px-2">
-            <div
-              className={`text-xs font-bold ${
-                metrics.overallScorePercent >= 90
-                  ? 'text-emerald-600'
-                  : metrics.overallScorePercent >= 70
-                  ? 'text-amber-600'
-                  : 'text-rose-600'
-              }`}
-            >
-              {metrics.overallStatus === 'OK' ? 'ERFÜLLT' : metrics.overallStatus === 'WARNING' ? 'AUFFÄLLIG' : 'PRÜFEN'}
+            <div className="mt-1">
+              {metrics.overallStatus === 'OK' ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  Unauffällig
+                </span>
+              ) : metrics.overallStatus === 'WARNING' ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                  <AlertCircle className="w-4 h-4 text-amber-600" />
+                  Hinweise vorhanden
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                  <XCircle className="w-4 h-4 text-rose-600" />
+                  Prüfung erforderlich
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -309,7 +302,14 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
               <span className="text-xs font-bold text-slate-800">
                 DIN 1988-300 / DIN EN 806
               </span>
-              {renderStatusPill(normCompliance.fwsCapacityCheck.status)}
+              {metrics.fwsCapacityEvaluation === 'UNPROVEN_AT_OPERATING_POINT' ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                  Nicht nachgewiesen (65°C)
+                </span>
+              ) : (
+                renderStatusPill(normCompliance.fwsCapacityCheck.status)
+              )}
             </div>
 
             <h3 className="text-xs font-semibold text-slate-700 flex items-center gap-1.5 mb-1">
@@ -358,15 +358,17 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
           </div>
 
           <div className="mt-3 pt-2 border-t border-slate-200 text-[11px] text-slate-600">
-            {metrics.fwsCapacityUtilizationPercent === undefined ? (
+            {metrics.fwsCapacityEvaluation === 'UNPROVEN_AT_OPERATING_POINT' ? (
               <span className="text-amber-800 font-medium">
-                Hersteller-Leistungsdaten bei 65°C Primärvorlauf noch nicht nachgewiesen. Auslastung rechnerisch unbestimmt.
+                Hersteller-Leistungsdaten bei 65°C Primärvorlauf noch nicht nachgewiesen. Auslastung rechnerisch nicht belastbar ermittelbar (Prüfung vor Ort bzw. mit Herstellerdiagramm empfohlen).
               </span>
-            ) : normCompliance.fwsCapacityCheck.status === 'OK' ? (
-              <span className="text-emerald-700">4 Stationen decken die 10 Duschbereiche am bestätigten Nennpunkt (70°C) mit Reserve ab.</span>
+            ) : metrics.fwsCapacityEvaluation === 'PROVEN_SUFFICIENT' ? (
+              <span className="text-emerald-700">
+                Spitzenbedarf wird am bestätigten Nennpunkt (70°C) durch die aktiven Stationen abgedeckt.
+              </span>
             ) : (
               <span className="text-rose-700 font-medium">
-                Monteur-Aktion: Alle 4 FWS zuschalten oder Primärvorlauftemperatur anheben!
+                Spitzendurchfluss übersteigt die Nennkapazität der aktiven Frischwasserstationen!
               </span>
             )}
           </div>

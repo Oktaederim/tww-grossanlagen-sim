@@ -252,7 +252,9 @@ export function generateInspectionPdf(
     ],
     [
       'Wiederaufladezeit 1 Duschgang (6 Min):',
-      `${metrics.showerSessionRechargeTimeCombinedMinutes} min (mit WP+WT)`,
+      metrics.showerSessionRechargeTimeCombinedMinutes !== undefined
+        ? `${metrics.showerSessionRechargeTimeCombinedMinutes} min (aktiv) | Nenn: ${metrics.showerSessionRechargeTimeNominalCombinedMinutes} min`
+        : `Nenn (WP+WT 256 kW): ${metrics.showerSessionRechargeTimeNominalCombinedMinutes} min`,
       'Wärmepumpen COP / Gütegrad:',
       `COP ${metrics.systemCop} (${metrics.copAnalysis.efficiencyLabel})`,
     ],

@@ -390,8 +390,12 @@ export const KeyMetricsGrid: React.FC<KeyMetricsGridProps> = ({
             </div>
           </div>
           <div className="mt-1 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600">
-            <span className="text-[10px] font-medium text-slate-600 truncate mr-1" title={metrics.fwsOperatingRating}>
-              {metrics.fwsOperatingRating}
+            <span className="text-[10px] font-medium text-slate-600 truncate mr-1" title={metrics.fwsOperatingNotice}>
+              {metrics.fwsOperatingRating === 'NOMINAL_CONFIRMED_70C'
+                ? '70°C Nennpunkt'
+                : metrics.fwsOperatingRating === 'UNPROVEN_AT_65C_PRIMARY'
+                ? '65°C Vorlauf (nicht belegt)'
+                : 'Vorlauf < 64°C kritisch'}
             </span>
             <span
               className={`font-semibold px-1.5 py-0.5 rounded text-[10px] shrink-0 ${

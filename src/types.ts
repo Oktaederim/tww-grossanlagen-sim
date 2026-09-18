@@ -116,6 +116,7 @@ export interface SystemCalculations {
   fwsCapacityUtilizationPercent?: number; // undefined wenn nicht belastbar berechenbar
   fwsUtilizationStatusText: string; // z.B. "82%" oder "Bei 65°C nicht belastbar berechenbar"
   fwsSufficient: boolean;
+  fwsCapacityEvaluation: 'PROVEN_SUFFICIENT' | 'UNPROVEN_AT_OPERATING_POINT' | 'PROVEN_INSUFFICIENT';
   fwsOperatingRating: 'NOMINAL_CONFIRMED_70C' | 'UNPROVEN_AT_65C_PRIMARY' | 'CRITICAL_UNDER_65C';
   fwsOperatingNotice: string; // Transparenter Hinweis zum Nenn- vs. 65°C-Prüfpunkt
   requiredPrimaryFlowLh: number; // Erforderlicher Heizwasservolumenstrom
@@ -130,7 +131,7 @@ export interface SystemCalculations {
   supplyInfeasibilityReason?: string; // Begründung bei Nichtversorgbarkeit
   isHydraulicOverloaded: boolean; // Ob FWS-Durchfluss überschritten ist
 
-  // Reale Hydraulik & Ventilschaltung
+  // Reale Hydraulik & Ventilschaltung (Simulationsannahme)
   fwsReturnValvePosition: 'BOTTOM_STRAT' | 'MID_STRAT'; // <30°C unten, >=30°C mittig in Puffer 3
   fwsReturnValveReason: string;
 
@@ -158,14 +159,20 @@ export interface SystemCalculations {
   showerSessionTotalMixedLiters: number; // Mischwassermenge für 1 Duschzyklus (z.B. 6 Min)
   showerSessionTotalHot60Liters: number; // 60°C Warmwassermenge für 1 Duschzyklus
   showerSessionEnergyKwh: number; // Dem Speicher für 1 Duschzyklus entzogene Wärmeenergie
-  showerSessionRechargeTimeWpMinutes: number; // Wiederaufladezeit für 1 Duschzyklus mit 3x WP (135 kW)
-  showerSessionRechargeTimeWtMinutes: number; // Wiederaufladezeit für 1 Duschzyklus mit 136 kW WT
-  showerSessionRechargeTimeCombinedMinutes: number; // Wiederaufladezeit für 1 Duschzyklus mit WP + 136 kW WT (271 kW)
+  showerSessionRechargeTimeWpMinutes?: number; // Wiederaufladezeit für 1 Duschzyklus mit aktiven WP (undefined wenn keine aktiv)
+  showerSessionRechargeTimeNominal3WpMinutes: number; // Referenzwert bei allen 3x WP (120 kW Nennleistung)
+  showerSessionRechargeTimeWtMinutes?: number; // Wiederaufladezeit für 1 Duschzyklus mit aktivem WT (undefined wenn deaktiviert)
+  showerSessionRechargeTimeNominalWtMinutes: number; // Referenzwert bei 136 kW WT (Nennleistung)
+  showerSessionRechargeTimeCombinedMinutes?: number; // Wiederaufladezeit für 1 Duschzyklus mit aktiven Erzeugern (undefined wenn 0 kW)
+  showerSessionRechargeTimeNominalCombinedMinutes: number; // Referenzwert bei 3x WP + 136 kW WT (256 kW Nennleistung)
   
   // Ladedauern Gesamtspeicher (6.000 L von minUsableTemp auf Soll 65°C)
-  fullStorageRechargeHoursWp: number; // mit 3x WP (135 kW)
-  fullStorageRechargeHoursWt: number; // mit 136 kW WT
-  fullStorageRechargeHoursCombined: number; // mit WP + 136 kW WT (271 kW)
+  fullStorageRechargeHoursWp?: number; // mit aktuell aktiven WP
+  fullStorageRechargeHoursNominal3Wp: number; // mit allen 3x WP (120 kW)
+  fullStorageRechargeHoursWt?: number; // mit aktivem WT
+  fullStorageRechargeHoursNominalWt: number; // mit 136 kW WT
+  fullStorageRechargeHoursCombined?: number; // mit aktiven Erzeugern
+  fullStorageRechargeHoursNominalCombined: number; // mit 3x WP + 136 kW WT (256 kW)
   
   // Zirkulation & Verluste
   circulationLossKw: number;
