@@ -99,14 +99,14 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
           <div>
             <div className="flex items-center justify-between gap-2 mb-2">
               <span className="text-xs font-bold text-slate-800">
-                DVGW W 551 Abs. 6.2
+                {normCompliance.w551OutletTemp.rule}
               </span>
               {renderStatusPill(normCompliance.w551OutletTemp.status)}
             </div>
 
             <h3 className="text-xs font-semibold text-slate-700 flex items-center gap-1.5 mb-1">
               <Thermometer className="w-4 h-4 text-red-500" />
-              WW-Austrittstemperatur (Großanlage)
+              WW-Austrittstemperatur ({normCompliance.w551OutletTemp.target >= 70 ? 'Thermische Desinfektion' : 'Großanlage'})
             </h3>
             <p className="text-[11px] text-slate-500 mb-3">
               {normCompliance.w551OutletTemp.description}
@@ -116,7 +116,7 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
             <div className="space-y-1">
               <div className="flex justify-between text-xs font-mono">
                 <span>Ist: <strong>{normCompliance.w551OutletTemp.actual.toFixed(1)} °C</strong></span>
-                <span className="text-slate-500">Soll: ≥ 60,0 °C</span>
+                <span className="text-slate-500">Soll: ≥ {normCompliance.w551OutletTemp.target.toFixed(1)} °C</span>
               </div>
               <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                 <div
@@ -128,7 +128,7 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
                       : 'bg-rose-500'
                   }`}
                   style={{
-                    width: `${Math.min(100, (normCompliance.w551OutletTemp.actual / 70) * 100)}%`,
+                    width: `${Math.min(100, (normCompliance.w551OutletTemp.actual / (normCompliance.w551OutletTemp.target >= 70 ? 75 : 65)) * 100)}%`,
                   }}
                 />
               </div>
@@ -136,8 +136,10 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
           </div>
 
           <div className="mt-3 pt-2 border-t border-slate-200 text-[11px] text-slate-600">
-            {normCompliance.w551OutletTemp.actual >= 60 ? (
-              <span className="text-emerald-700">Temperaturvorgabe nach W 551 rechnerisch eingehalten (≥ 60 °C am Austritt).</span>
+            {normCompliance.w551OutletTemp.actual >= normCompliance.w551OutletTemp.target ? (
+              <span className="text-emerald-700">
+                Temperaturvorgabe nach W 551 rechnerisch eingehalten (≥ {normCompliance.w551OutletTemp.target.toFixed(1)} °C am Austritt).
+              </span>
             ) : (
               <span className="text-rose-700 font-medium">
                 Monteur-Aktion: FWS-Sollwert oder Puffervorlauf anheben!
@@ -151,14 +153,14 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
           <div>
             <div className="flex items-center justify-between gap-2 mb-2">
               <span className="text-xs font-bold text-slate-800">
-                DVGW W 551 Abs. 6.3.1
+                {normCompliance.w551ReturnTemp.rule}
               </span>
               {renderStatusPill(normCompliance.w551ReturnTemp.status)}
             </div>
 
             <h3 className="text-xs font-semibold text-slate-700 flex items-center gap-1.5 mb-1">
               <Thermometer className="w-4 h-4 text-violet-500" />
-              Zirkulations-Rücklauf ≥ 55°C
+              Zirkulations-Rücklauf ≥ {normCompliance.w551ReturnTemp.target.toFixed(0)}°C
             </h3>
             <p className="text-[11px] text-slate-500 mb-3">
               {normCompliance.w551ReturnTemp.description}
@@ -166,8 +168,12 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
 
             <div className="space-y-1">
               <div className="flex justify-between text-xs font-mono">
-                <span>Ist: <strong>{normCompliance.w551ReturnTemp.actual.toFixed(1)} °C</strong></span>
-                <span className="text-slate-500">Soll: ≥ 55,0 °C</span>
+                <span>
+                  Ist: <strong className={normCompliance.w551ReturnTemp.status === 'ERROR' ? 'text-rose-600' : ''}>
+                    {normCompliance.w551ReturnTemp.actual.toFixed(1)} °C
+                  </strong>
+                </span>
+                <span className="text-slate-500">Soll: ≥ {normCompliance.w551ReturnTemp.target.toFixed(1)} °C</span>
               </div>
               <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                 <div
@@ -179,7 +185,7 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
                       : 'bg-rose-500'
                   }`}
                   style={{
-                    width: `${Math.min(100, (normCompliance.w551ReturnTemp.actual / 65) * 100)}%`,
+                    width: `${Math.min(100, (normCompliance.w551ReturnTemp.actual / (normCompliance.w551ReturnTemp.target >= 65 ? 75 : 65)) * 100)}%`,
                   }}
                 />
               </div>
@@ -187,12 +193,18 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
           </div>
 
           <div className="mt-3 pt-2 border-t border-slate-200 text-[11px] text-slate-600">
-            {normCompliance.w551ReturnTemp.actual >= 55 ? (
-              <span className="text-emerald-700">Rücklauf im hygienisch sicheren Bereich.</span>
-            ) : (
+            {normCompliance.w551ReturnTemp.status === 'ERROR' ? (
               <span className="text-rose-700 font-medium">
-                Monteur-Aktion: Pumpenleistung erhöhen oder Zirkulationsstränge abgleichen!
+                {normCompliance.w551ReturnTemp.actual > normCompliance.w551OutletTemp.actual
+                  ? 'Physikalisch unplausibel: Zirkulationsrücklauf wärmer als FWS-Austrittsvorlauf!'
+                  : 'Monteur-Aktion: Pumpenleistung erhöhen oder Zirkulationsstränge abgleichen!'}
               </span>
+            ) : normCompliance.w551ReturnTemp.status === 'WARNING' ? (
+              <span className="text-amber-700 font-medium">
+                Grenzbereich: Rücklauftemperatur liegt knapp unter dem Normwert.
+              </span>
+            ) : (
+              <span className="text-emerald-700">Rücklauf im hygienisch sicheren Bereich.</span>
             )}
           </div>
         </div>
@@ -217,7 +229,11 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
 
             <div className="space-y-1">
               <div className="flex justify-between text-xs font-mono">
-                <span>Ist: <strong>{normCompliance.w551TempDrop.actual.toFixed(1)} K</strong></span>
+                <span>
+                  Ist: <strong className={normCompliance.w551TempDrop.status === 'ERROR' ? 'text-rose-600' : ''}>
+                    {normCompliance.w551TempDrop.actual.toFixed(1)} K
+                  </strong>
+                </span>
                 <span className="text-slate-500">Max: ≤ 5,0 K</span>
               </div>
               <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
@@ -230,7 +246,7 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
                       : 'bg-rose-500'
                   }`}
                   style={{
-                    width: `${Math.min(100, (normCompliance.w551TempDrop.actual / 8) * 100)}%`,
+                    width: `${Math.max(0, Math.min(100, (normCompliance.w551TempDrop.actual / 8) * 100))}%`,
                   }}
                 />
               </div>
@@ -238,12 +254,18 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
           </div>
 
           <div className="mt-3 pt-2 border-t border-slate-200 text-[11px] text-slate-600">
-            {normCompliance.w551TempDrop.actual <= 5 ? (
-              <span className="text-emerald-700">Wärmeverlust der Rohrleitungen normgerecht kompensiert.</span>
-            ) : (
+            {normCompliance.w551TempDrop.status === 'ERROR' ? (
               <span className="text-rose-700 font-medium">
-                Monteur-Aktion: Rohrdämmung prüfen oder Zirkulationspumpe anheben.
+                {normCompliance.w551TempDrop.actual < 0
+                  ? 'Unplausible Spreizung: Vorlauftemperatur muss höher sein als Rücklauftemperatur.'
+                  : 'Monteur-Aktion: Rohrdämmung prüfen oder Zirkulationspumpe anheben.'}
               </span>
+            ) : normCompliance.w551TempDrop.status === 'WARNING' ? (
+              <span className="text-amber-700 font-medium">
+                Leicht erhöhte Spreizung (&gt; 5 K): Hydraulischen Abgleich der Zirkulation prüfen.
+              </span>
+            ) : (
+              <span className="text-emerald-700">Wärmeverlust der Rohrleitungen normgerecht kompensiert.</span>
             )}
           </div>
         </div>

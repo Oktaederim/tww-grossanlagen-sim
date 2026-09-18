@@ -120,20 +120,28 @@ export const FieldInspectionChecklist: React.FC<FieldInspectionChecklistProps> =
           <div className="text-[11px] text-slate-600 space-y-1.5 pt-1">
             <div className="flex justify-between">
               <span>Puffer-Vorlauf zur FWS:</span>
-              <span className="font-mono font-bold text-slate-800">65,0 °C</span>
+              <span className="font-mono font-bold text-slate-800">
+                {metrics.fwsPrimaryFlowTempC.toFixed(1)} °C
+              </span>
             </div>
             <div className="flex justify-between">
               <span>Rücklauf zum Puffer:</span>
-              <span className="font-mono font-bold text-emerald-700">28,0 °C</span>
+              <span className="font-mono font-bold text-emerald-700">
+                {metrics.fwsPrimaryReturnTempC.toFixed(1)} °C
+              </span>
             </div>
             <div className="flex justify-between border-t border-slate-200 pt-1">
               <span>Auskühlungs-Spreizung:</span>
-              <span className="font-mono font-bold text-blue-700">37,0 K</span>
+              <span className="font-mono font-bold text-blue-700">
+                {metrics.fwsPrimaryDeltaTK.toFixed(1)} K
+              </span>
             </div>
           </div>
 
           <p className="text-[10px] text-emerald-700 mt-1">
-            Hervorragende Auskühlung. Hält den unteren Pufferbereich kalt für maximale Wärmepumpen-Effizienz.
+            {metrics.fwsPrimaryReturnTempC <= 30
+              ? 'Hervorragende Auskühlung. Hält den unteren Pufferbereich kalt für maximale Wärmepumpen-Effizienz.'
+              : 'Erhöhte Rücklauftemperatur: Verminderte Schichtungseffizienz prüfen.'}
           </p>
         </div>
 
@@ -157,7 +165,11 @@ export const FieldInspectionChecklist: React.FC<FieldInspectionChecklistProps> =
               <span>Aktuelle Spreizung:</span>
               <span
                 className={`font-mono font-bold ${
-                  metrics.circulationTempDropK <= 5.0 ? 'text-emerald-700' : 'text-rose-600'
+                  !metrics.isCirculationReturnPlausible || metrics.circulationTempDropK < 0
+                    ? 'text-rose-600'
+                    : metrics.circulationTempDropK <= 5.0
+                    ? 'text-emerald-700'
+                    : 'text-rose-600'
                 }`}
               >
                 {metrics.circulationTempDropK} K
@@ -166,7 +178,9 @@ export const FieldInspectionChecklist: React.FC<FieldInspectionChecklistProps> =
           </div>
 
           <p className="text-[10px] text-slate-500 mt-1">
-            {metrics.circulationPumpAdequate
+            {!metrics.isCirculationReturnPlausible || metrics.circulationTempDropK < 0
+              ? 'Unplausibel: Rücklauf wärmer als Vorlauf. Sensorik prüfen!'
+              : metrics.circulationPumpAdequate
               ? 'Zirkulationspumpe ausreichend dimensioniert nach DVGW W 551.'
               : 'Pumpenleistung unzureichend! Spreizung überschreitet 5 K.'}
           </p>

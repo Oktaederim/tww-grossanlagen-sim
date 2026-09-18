@@ -75,6 +75,11 @@ export default function App() {
         setCentralHeating((prev) => ({ ...prev, enabled: true, powerKw: 136 }));
         setFws((prev) => ({ ...prev, activeStations: 4, hotWaterOutletTempC: 60 }));
         setBuffer((prev) => ({ ...prev, topTempC: 65, bottomTempC: 32 }));
+        setCirculation((prev) => ({
+          ...prev,
+          flowTempC: 60,
+          returnTempC: 56,
+        }));
         break;
 
       case 'STANDARD_COMMERCIAL':
@@ -92,6 +97,11 @@ export default function App() {
         setCentralHeating((prev) => ({ ...prev, enabled: false }));
         setFws((prev) => ({ ...prev, activeStations: 3, hotWaterOutletTempC: 60 }));
         setBuffer((prev) => ({ ...prev, topTempC: 65, bottomTempC: 28 }));
+        setCirculation((prev) => ({
+          ...prev,
+          flowTempC: 60,
+          returnTempC: 56,
+        }));
         break;
 
       case 'LOW_NIGHT':
@@ -109,6 +119,11 @@ export default function App() {
         setCentralHeating((prev) => ({ ...prev, enabled: false }));
         setFws((prev) => ({ ...prev, activeStations: 1, hotWaterOutletTempC: 60 }));
         setBuffer((prev) => ({ ...prev, topTempC: 64, bottomTempC: 26 }));
+        setCirculation((prev) => ({
+          ...prev,
+          flowTempC: 60,
+          returnTempC: 56,
+        }));
         break;
 
       case 'WP_N_MINUS_1':
@@ -125,6 +140,11 @@ export default function App() {
         );
         setCentralHeating((prev) => ({ ...prev, enabled: true, powerKw: 136 }));
         setFws((prev) => ({ ...prev, activeStations: 4, hotWaterOutletTempC: 60 }));
+        setCirculation((prev) => ({
+          ...prev,
+          flowTempC: 60,
+          returnTempC: 56,
+        }));
         break;
 
       case 'THERMAL_DISINFECTION':

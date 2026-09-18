@@ -456,7 +456,9 @@ export const KeyMetricsGrid: React.FC<KeyMetricsGridProps> = ({
             </div>
             <div
               className={`text-xl sm:text-2xl font-bold ${
-                metrics.circulationTempDropK > 5.0 ? 'text-rose-600' : 'text-slate-900'
+                !metrics.isCirculationReturnPlausible || metrics.circulationTempDropK < 0 || metrics.circulationTempDropK > 5.0
+                  ? 'text-rose-600'
+                  : 'text-slate-900'
               }`}
             >
               {metrics.circulationTempDropK}{' '}
@@ -467,12 +469,18 @@ export const KeyMetricsGrid: React.FC<KeyMetricsGridProps> = ({
             <span>Norm: ≤ 5,0 K</span>
             <span
               className={`font-semibold px-1.5 py-0.5 rounded ${
-                metrics.circulationTempDropK <= 5.0
+                !metrics.isCirculationReturnPlausible || metrics.circulationTempDropK < 0
+                  ? 'text-rose-700 bg-rose-50'
+                  : metrics.circulationTempDropK <= 5.0
                   ? 'text-emerald-700 bg-emerald-50'
                   : 'text-rose-700 bg-rose-50'
               }`}
             >
-              {metrics.circulationTempDropK <= 5.0 ? 'DVGW OK' : 'Zu hoch!'}
+              {!metrics.isCirculationReturnPlausible || metrics.circulationTempDropK < 0
+                ? 'Unplausibel (RL>VL)'
+                : metrics.circulationTempDropK <= 5.0
+                ? 'DVGW OK'
+                : 'Zu hoch!'}
             </span>
           </div>
         </div>

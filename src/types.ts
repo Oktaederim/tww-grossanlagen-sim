@@ -177,10 +177,18 @@ export interface SystemCalculations {
   fullStorageRechargeHoursNominalCombined: number; // mit 3x WP + 136 kW WT (256 kW)
   
   // Zirkulation & Verluste
+  circFlowTempC: number; // Reale Vorlauftemperatur der Zirkulation (entspricht FWS-Austritt)
+  circReturnTempC: number; // Gemessene / eingegebene Rücklauftemperatur
   circulationLossKw: number;
-  circulationTempDropK: number; // Delta T Vorlauf/Rücklauf
+  circulationTempDropK: number; // Delta T Vorlauf/Rücklauf (positiv = normaler Temperaturabfall)
   circulationPumpMinFlowLh: number; // Nach DVGW W 551 erforderlicher Mindestvolumenstrom
   circulationPumpAdequate: boolean;
+  isCirculationReturnPlausible: boolean; // false, wenn Rücklauf > Vorlauf
+
+  // Primärseite FWS Diagnostik
+  fwsPrimaryFlowTempC: number;
+  fwsPrimaryReturnTempC: number;
+  fwsPrimaryDeltaTK: number;
   
   // COP- und Effizienzanalyse basierend auf Quellen- und Speichertemperatur
   copAnalysis: CopAnalysis;

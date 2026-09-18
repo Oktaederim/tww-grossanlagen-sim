@@ -94,14 +94,26 @@ export function generateInspectionPdf(
       'Zirkulationsrücklauf Temperatur',
       `${metrics.normCompliance.w551ReturnTemp.actual}°C`,
       `>= ${metrics.normCompliance.w551ReturnTemp.target}°C`,
-      metrics.normCompliance.w551ReturnTemp.status === 'OK' ? 'ERFÜLLT' : 'ABWEICHUNG',
-      'DVGW W 551 Abs. 6.3.1',
+      metrics.normCompliance.w551ReturnTemp.status === 'OK'
+        ? 'ERFÜLLT'
+        : metrics.normCompliance.w551ReturnTemp.status === 'WARNING'
+        ? 'GRENZWERTIG'
+        : !metrics.isCirculationReturnPlausible
+        ? 'UNPLAUSIBEL'
+        : 'ABWEICHUNG',
+      metrics.normCompliance.w551ReturnTemp.rule,
     ],
     [
       'Zirkulationsspreizung (Delta T)',
       `${metrics.normCompliance.w551TempDrop.actual} K`,
       `<= ${metrics.normCompliance.w551TempDrop.maxAllowed} K`,
-      metrics.normCompliance.w551TempDrop.status === 'OK' ? 'ERFÜLLT' : 'ABWEICHUNG',
+      metrics.normCompliance.w551TempDrop.status === 'OK'
+        ? 'ERFÜLLT'
+        : metrics.normCompliance.w551TempDrop.status === 'WARNING'
+        ? 'GRENZWERTIG'
+        : metrics.normCompliance.w551TempDrop.actual < 0
+        ? 'UNPLAUSIBEL'
+        : 'ABWEICHUNG',
       'DVGW W 551 (Delta T <= 5K)',
     ],
     [
@@ -113,9 +125,15 @@ export function generateInspectionPdf(
     ],
     [
       'FWS-Kaskadenauslastung Spitzenlast',
-      `${metrics.peakHotWaterFlowLmin} l/min (${metrics.normCompliance.fwsCapacityCheck.utilization}%)`,
+      metrics.fwsCapacityUtilizationPercent !== undefined
+        ? `${metrics.peakHotWaterFlowLmin} l/min (${metrics.fwsCapacityUtilizationPercent}%)`
+        : `${metrics.peakHotWaterFlowLmin} l/min (Herstellerwert bei 65°C offen)`,
       `<= ${metrics.fwsTotalCapacityLmin} l/min`,
-      metrics.normCompliance.fwsCapacityCheck.status === 'OK' ? 'ERFÜLLT' : 'ÜBERLASTUNG',
+      metrics.fwsCapacityEvaluation === 'UNPROVEN_AT_OPERATING_POINT'
+        ? 'OFFEN (65°C)'
+        : metrics.normCompliance.fwsCapacityCheck.status === 'OK'
+        ? 'ERFÜLLT'
+        : 'ÜBERLASTUNG',
       'DIN 1988-300',
     ],
     [

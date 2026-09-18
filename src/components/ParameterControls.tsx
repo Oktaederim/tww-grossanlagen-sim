@@ -1339,12 +1339,18 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                     max="70"
                     step="0.5"
                     value={fws.hotWaterOutletTempC}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const newTemp = Number(e.target.value);
                       setFws((prev) => ({
                         ...prev,
-                        hotWaterOutletTempC: Number(e.target.value),
-                      }))
-                    }
+                        hotWaterOutletTempC: newTemp,
+                      }));
+                      setCirculation((prev) => ({
+                        ...prev,
+                        flowTempC: newTemp,
+                        returnTempC: prev.returnTempC > newTemp ? Math.max(40, newTemp - 4) : prev.returnTempC,
+                      }));
+                    }}
                     className="w-full accent-blue-600 h-1.5 bg-slate-200 rounded"
                   />
                   {fws.hotWaterOutletTempC < 60 && (
@@ -1621,24 +1627,29 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
               {/* Right Column: Return Temp & 3-Liter-Rule */}
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-4 text-xs">
                 <div>
-                  <div className="flex justify-between text-slate-700 mb-1">
+                  <div className="flex justify-between items-center text-slate-700 mb-1">
                     <span className="font-semibold">
-                      Zirkulations-Rücklauftemperatur (Soll ≥ 55°C)
+                      Zirkulations-Rücklauftemperatur (Soll ≥ {fws.hotWaterOutletTempC >= 68 ? '65' : '55'}°C)
                     </span>
                     <span
                       className={`font-mono font-bold ${
-                        circulation.returnTempC >= 55 ? 'text-emerald-700' : 'text-rose-600'
+                        circulation.returnTempC > fws.hotWaterOutletTempC
+                          ? 'text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded'
+                          : circulation.returnTempC >= (fws.hotWaterOutletTempC >= 68 ? 65 : 55)
+                          ? 'text-emerald-700'
+                          : 'text-rose-600'
                       }`}
                     >
                       {circulation.returnTempC} °C
                     </span>
                   </div>
+
                   <input
                     type="range"
-                    min="45"
-                    max="60"
+                    min="40"
+                    max={Math.max(45, fws.hotWaterOutletTempC)}
                     step="0.5"
-                    value={circulation.returnTempC}
+                    value={Math.min(fws.hotWaterOutletTempC, circulation.returnTempC)}
                     onChange={(e) =>
                       setCirculation((prev) => ({
                         ...prev,
@@ -1647,10 +1658,51 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                     }
                     className="w-full accent-rose-600 h-1.5 bg-slate-200 rounded"
                   />
+
                   <div className="flex justify-between text-[10px] text-slate-500 mt-1">
-                    <span>45°C (Kritisch!)</span>
-                    <span>55°C (DVGW Mindestwert)</span>
-                    <span>60°C</span>
+                    <span>40°C</span>
+                    <span>{fws.hotWaterOutletTempC >= 68 ? '65°C (Desinfektion)' : '55°C (DVGW Mindestwert)'}</span>
+                    <span>Max: {fws.hotWaterOutletTempC}°C (Vorlauf)</span>
+                  </div>
+
+                  {/* Physical temperature relationship */}
+                  <div className="mt-2.5 p-2 bg-white rounded-lg border border-slate-200 text-[11px] space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">FWS-Austritt (Vorlauf):</span>
+                      <span className="font-mono font-bold text-slate-800">{fws.hotWaterOutletTempC.toFixed(1)} °C</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Reale Spreizung (ΔT):</span>
+                      <span
+                        className={`font-mono font-bold ${
+                          circulation.returnTempC > fws.hotWaterOutletTempC
+                            ? 'text-rose-600'
+                            : fws.hotWaterOutletTempC - circulation.returnTempC <= 5.0
+                            ? 'text-emerald-700'
+                            : 'text-rose-600'
+                        }`}
+                      >
+                        {(fws.hotWaterOutletTempC - circulation.returnTempC).toFixed(1)} K
+                        {circulation.returnTempC > fws.hotWaterOutletTempC && ' (Unplausibel: RL > VL!)'}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const lossW = circulation.pipeLengthMeters * (circulation.specificLossWpm ?? 12.0);
+                        const flowLh = Math.max(100, circulation.pumpFlowRateLh);
+                        const deltaT = lossW / (flowLh * 1.163);
+                        const physReturn = Math.round((fws.hotWaterOutletTempC - deltaT) * 10) / 10;
+                        setCirculation((prev) => ({
+                          ...prev,
+                          returnTempC: Math.max(40, Math.min(fws.hotWaterOutletTempC, physReturn)),
+                        }));
+                      }}
+                      className="w-full mt-1.5 text-center text-[10px] text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 py-1 rounded border border-blue-200 font-medium transition cursor-pointer"
+                    >
+                      Physikalisch berechnen aus Rohrverlust &amp; Pumpe
+                    </button>
                   </div>
                 </div>
 

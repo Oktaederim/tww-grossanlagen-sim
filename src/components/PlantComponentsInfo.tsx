@@ -631,9 +631,16 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
                     <span className="font-bold text-slate-900 block">Erzeugeraustritt (PWH)</span>
                     <span className="text-[10px] text-slate-500">Am Ausgang der FWS-Kaskade</span>
                   </div>
-                  <div className="font-mono font-bold text-emerald-600">Soll: ≥ 60,0 °C</div>
+                  <div className="font-mono font-bold text-emerald-600">
+                    Soll: ≥ {fws.hotWaterOutletTempC >= 68 ? '70,0' : '60,0'} °C
+                  </div>
                   <div className="text-slate-600">
-                    Aktueller Istwert: <strong className="font-mono">{fws.hotWaterOutletTempC} °C</strong> (Normkonform)
+                    Aktueller Istwert: <strong className="font-mono">{fws.hotWaterOutletTempC} °C</strong>{' '}
+                    {fws.hotWaterOutletTempC >= (fws.hotWaterOutletTempC >= 68 ? 70 : 60) ? (
+                      <span className="text-emerald-700">(Normkonform)</span>
+                    ) : (
+                      <span className="text-rose-600 font-semibold">(Abweichung)</span>
+                    )}
                   </div>
                 </div>
 
@@ -642,9 +649,18 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
                     <span className="font-bold text-slate-900 block">Zirkulationsrücklauf (PWH-C)</span>
                     <span className="text-[10px] text-slate-500">Vor Eintritt in Speicher/FWS</span>
                   </div>
-                  <div className="font-mono font-bold text-emerald-600">Soll: ≥ 55,0 °C</div>
+                  <div className="font-mono font-bold text-emerald-600">
+                    Soll: ≥ {fws.hotWaterOutletTempC >= 68 ? '65,0' : '55,0'} °C
+                  </div>
                   <div className="text-slate-600">
-                    Aktueller Istwert: <strong className="font-mono">{circulation.returnTempC} °C</strong>
+                    Aktueller Istwert: <strong className="font-mono">{circulation.returnTempC} °C</strong>{' '}
+                    {circulation.returnTempC > fws.hotWaterOutletTempC ? (
+                      <span className="text-rose-600 font-bold">(Unplausibel: RL &gt; VL)</span>
+                    ) : circulation.returnTempC >= (fws.hotWaterOutletTempC >= 68 ? 65 : 55) ? (
+                      <span className="text-emerald-700">(Normkonform)</span>
+                    ) : (
+                      <span className="text-rose-600 font-semibold">(Abweichung: &lt; Mindestwert)</span>
+                    )}
                   </div>
                 </div>
 
@@ -655,7 +671,14 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
                   </div>
                   <div className="font-mono font-bold text-emerald-600">Soll: ≤ 5,0 K</div>
                   <div className="text-slate-600">
-                    Aktuelle Spreizung: <strong className="font-mono">{metrics.circulationTempDropK} K</strong>
+                    Aktuelle Spreizung: <strong className="font-mono">{metrics.circulationTempDropK} K</strong>{' '}
+                    {!metrics.isCirculationReturnPlausible || metrics.circulationTempDropK < 0 ? (
+                      <span className="text-rose-600 font-bold">(Unplausibel)</span>
+                    ) : metrics.circulationTempDropK <= 5.0 ? (
+                      <span className="text-emerald-700">(Normkonform ≤ 5 K)</span>
+                    ) : (
+                      <span className="text-rose-600 font-semibold">(Abweichung &gt; 5 K)</span>
+                    )}
                   </div>
                 </div>
 

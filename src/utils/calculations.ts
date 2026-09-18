@@ -324,6 +324,10 @@ export function calculateSystemMetrics(
   let thermalMarginNotice = '';
   let supplyInfeasibilityReason = '';
 
+  const fwsPrimaryFlowTempC = fws.primaryFlowTempC ?? buffer.topTempC;
+  const fwsPrimaryReturnTempC = fws.primaryReturnTempC ?? buffer.bottomTempC;
+  const fwsPrimaryDeltaTK = Math.max(0, Math.round((fwsPrimaryFlowTempC - fwsPrimaryReturnTempC) * 10) / 10);
+
   const tempMargin = buffer.topTempC - fws.hotWaterOutletTempC;
 
   if (buffer.topTempC < fws.hotWaterOutletTempC) {
@@ -389,11 +393,17 @@ export function calculateSystemMetrics(
       : 99.9;
 
   // 5. Zirkulation & Verluste nach DVGW W 551 / DIN 1988-200
+  // Die Zirkulations-Vorlauftemperatur entspricht physikalisch dem TWW-Austritt der FWS-Kaskade
+  const circFlowTempC = fws.hotWaterOutletTempC;
+  const circReturnTempC = circulation.returnTempC;
+  const isCirculationReturnPlausible = circReturnTempC <= circFlowTempC;
+
   const circulationLossKw = circulation.enabled
-    ? (circulation.pipeLengthMeters * circulation.specificLossWpm) / 1000
+    ? (circulation.pipeLengthMeters * (circulation.specificLossWpm ?? 12.0)) / 1000
     : 0;
 
-  const circulationTempDropK = Math.max(0, circulation.flowTempC - circulation.returnTempC);
+  // Spreizung Delta T = Vorlauf - Rücklauf (bei physikalisch normaler Abkühlung positiv)
+  const circulationTempDropK = Math.round((circFlowTempC - circReturnTempC) * 10) / 10;
 
   // Erforderlicher Zirkulations-Mindestvolumenstrom für maximal 5K Spreizung:
   // V_zirk = Q_loss / (c * DeltaT_max = 5K)
@@ -537,26 +547,55 @@ export function calculateSystemMetrics(
       : undefined;
 
   // 9. Normen- und Hygiene-Prüfungen
+  const isDisinfectionMode = fws.hotWaterOutletTempC >= 68.0;
+  const w551OutletTarget = isDisinfectionMode ? 70.0 : 60.0;
+  const w551ReturnTarget = isDisinfectionMode ? 65.0 : 55.0;
+
   const w551OutletStatus =
-    fws.hotWaterOutletTempC >= 60
+    fws.hotWaterOutletTempC >= w551OutletTarget
       ? 'OK'
-      : fws.hotWaterOutletTempC >= 58
+      : fws.hotWaterOutletTempC >= w551OutletTarget - 2.0
       ? 'WARNING'
       : 'ERROR';
 
-  const w551ReturnStatus =
-    circulation.returnTempC >= 55
-      ? 'OK'
-      : circulation.returnTempC >= 53
-      ? 'WARNING'
-      : 'ERROR';
+  // Rücklauftemperatur-Prüfung:
+  // VETO: Liegt der Rücklauf ÜBER dem Vorlauf, ist das physikalisch unmöglich (Mess- oder Parametrierungsfehler)
+  let w551ReturnStatus: 'OK' | 'WARNING' | 'ERROR' = 'OK';
+  let w551ReturnDescription = '';
 
-  const w551DropStatus =
-    circulationTempDropK <= 5.0
-      ? 'OK'
-      : circulationTempDropK <= 6.5
-      ? 'WARNING'
-      : 'ERROR';
+  if (!isCirculationReturnPlausible) {
+    w551ReturnStatus = 'ERROR';
+    w551ReturnDescription = `Physikalisch unplausibel: Zirkulationsrücklauf (${circReturnTempC.toFixed(1)}°C) liegt über der Vorlauftemperatur (${circFlowTempC.toFixed(1)}°C) am Erzeugeraustritt!`;
+  } else if (circReturnTempC >= w551ReturnTarget) {
+    w551ReturnStatus = 'OK';
+    w551ReturnDescription = isDisinfectionMode
+      ? `Zirkulations-Rücklauftemperatur (${circReturnTempC.toFixed(1)}°C) erfüllt die Vorgabe für thermische Desinfektion (≥ 65°C bei 70°C Vorlauf).`
+      : `Zirkulations-Rücklauftemperatur (${circReturnTempC.toFixed(1)}°C) erfüllt die DVGW-Mindestvorgabe (≥ 55°C im gesamten System).`;
+  } else if (circReturnTempC >= w551ReturnTarget - 2.0) {
+    w551ReturnStatus = 'WARNING';
+    w551ReturnDescription = `Grenzbereich: Zirkulationsrücklauf (${circReturnTempC.toFixed(1)}°C) liegt knapp unter dem Sollwert (≥ ${w551ReturnTarget.toFixed(1)}°C).`;
+  } else {
+    w551ReturnStatus = 'ERROR';
+    w551ReturnDescription = `Hygienerisiko: Zirkulationsrücklauf (${circReturnTempC.toFixed(1)}°C) unterschreitet den Sollwert (≥ ${w551ReturnTarget.toFixed(1)}°C) deutlich!`;
+  }
+
+  // Temperaturspreizung Delta T <= 5 K:
+  let w551DropStatus: 'OK' | 'WARNING' | 'ERROR' = 'OK';
+  let w551DropDescription = '';
+
+  if (!isCirculationReturnPlausible || circulationTempDropK < 0) {
+    w551DropStatus = 'ERROR';
+    w551DropDescription = `Physikalisch unplausible Spreizung (${circulationTempDropK.toFixed(1)} K): Das Wasser erwärmt sich scheinbar im Leitungsnetz (${circFlowTempC.toFixed(1)}°C VL → ${circReturnTempC.toFixed(1)}°C RL).`;
+  } else if (circulationTempDropK <= 5.0) {
+    w551DropStatus = 'OK';
+    w551DropDescription = `Temperaturabfall (${circulationTempDropK.toFixed(1)} K) hält die normative Obergrenze von maximal 5 K nach DVGW W 551 ein.`;
+  } else if (circulationTempDropK <= 6.5) {
+    w551DropStatus = 'WARNING';
+    w551DropDescription = `Erhöhter Wärmeverlust: Spreizung (${circulationTempDropK.toFixed(1)} K) überschreitet 5 K geringfügig. Pumpenvolumenstrom oder Dämmung prüfen.`;
+  } else {
+    w551DropStatus = 'ERROR';
+    w551DropDescription = `Unzulässige Spreizung (${circulationTempDropK.toFixed(1)} K > 5 K): Zu hoher Leitungsverlust oder zu geringer Zirkulationsvolumenstrom!`;
+  }
 
   const threeLiterRuleStatus =
     circulation.maxTapDistancePipeVolumeLitres <= 3.0
@@ -583,23 +622,25 @@ export function calculateSystemMetrics(
     w551OutletTemp: {
       status: w551OutletStatus as 'OK' | 'WARNING' | 'ERROR',
       actual: fws.hotWaterOutletTempC,
-      target: 60,
-      rule: 'DVGW W 551 / DIN 1988-200 Abs. 6.2',
-      description: 'Warmwasser-Austrittstemperatur am Erzeuger muss mindestens 60°C betragen (Großanlage).',
+      target: w551OutletTarget,
+      rule: isDisinfectionMode ? 'DVGW W 551 Abs. 6.4 (Desinfektion)' : 'DVGW W 551 / DIN 1988-200 Abs. 6.2',
+      description: isDisinfectionMode
+        ? 'Thermische Desinfektion: WW-Austrittstemperatur am Erzeuger muss mindestens 70°C betragen.'
+        : 'Warmwasser-Austrittstemperatur am Erzeuger muss mindestens 60°C betragen (Großanlage).',
     },
     w551ReturnTemp: {
       status: w551ReturnStatus as 'OK' | 'WARNING' | 'ERROR',
-      actual: circulation.returnTempC,
-      target: 55,
-      rule: 'DVGW W 551 Abs. 6.3.1',
-      description: 'Zirkulations-Rücklauftemperatur muss im gesamten System mindestens 55°C betragen.',
+      actual: circReturnTempC,
+      target: w551ReturnTarget,
+      rule: isDisinfectionMode ? 'DVGW W 551 Abs. 6.4 (Desinfektion)' : 'DVGW W 551 Abs. 6.3.1',
+      description: w551ReturnDescription,
     },
     w551TempDrop: {
       status: w551DropStatus as 'OK' | 'WARNING' | 'ERROR',
       actual: circulationTempDropK,
       maxAllowed: 5.0,
       rule: 'DVGW W 551 & DIN 1988-200',
-      description: 'Die Temperaturdifferenz zwischen Vorlauf und Rücklauf der Zirkulation darf maximal 5 K betragen.',
+      description: w551DropDescription,
     },
     threeLiterRule: {
       status: threeLiterRuleStatus as 'OK' | 'WARNING' | 'ERROR',
@@ -847,10 +888,16 @@ export function calculateSystemMetrics(
     fullStorageRechargeHoursNominalWt,
     fullStorageRechargeHoursCombined,
     fullStorageRechargeHoursNominalCombined,
+    circFlowTempC,
+    circReturnTempC,
     circulationLossKw: Math.round(circulationLossKw * 100) / 100,
-    circulationTempDropK: Math.round(circulationTempDropK * 10) / 10,
+    circulationTempDropK,
     circulationPumpMinFlowLh,
     circulationPumpAdequate,
+    isCirculationReturnPlausible,
+    fwsPrimaryFlowTempC,
+    fwsPrimaryReturnTempC,
+    fwsPrimaryDeltaTK,
     copAnalysis,
     normCompliance,
     overallStatus,
