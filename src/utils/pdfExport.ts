@@ -71,7 +71,7 @@ export function generateInspectionPdf(
 
   doc.text(`Fachbetrieb: ${inspection.companyName || 'Haustechnik Meisterbetrieb GmbH'}`, margin + 95, y + 10);
   doc.text(`Freigabestatus: ${inspection.statusApproved ? 'ABGENOMMEN / BETRIEBSBEREIT' : 'MÄNGEL / NACHPRÜFUNG'}`, margin + 95, y + 15);
-  doc.text(`Anlagenkonfiguration: 3x WP (135 kW) + 136 kW WT + 6.000 L Speicher`, margin + 95, y + 20);
+  doc.text(`Anlagenkonfiguration: 3x QAHV (120 kW th) + 136 kW WT (70/55°C) + 6.000 L Speicher`, margin + 95, y + 20);
 
   y += 28;
 
@@ -100,7 +100,7 @@ export function generateInspectionPdf(
     [
       'Zirkulationsspreizung (Delta T)',
       `${metrics.normCompliance.w551TempDrop.actual} K`,
-      `<= ${metrics.normCompliance.w551TempDrop.target} K`,
+      `<= ${metrics.normCompliance.w551TempDrop.maxAllowed} K`,
       metrics.normCompliance.w551TempDrop.status === 'OK' ? 'ERFÜLLT' : 'ABWEICHUNG',
       'DVGW W 551 (Delta T <= 5K)',
     ],
@@ -113,14 +113,14 @@ export function generateInspectionPdf(
     ],
     [
       'FWS-Kaskadenauslastung Spitzenlast',
-      `${metrics.normCompliance.fwsCapacityCheck.demandLmin} l/min (${metrics.normCompliance.fwsCapacityCheck.utilization}%)`,
-      `<= ${metrics.normCompliance.fwsCapacityCheck.capacityLmin} l/min`,
+      `${metrics.peakHotWaterFlowLmin} l/min (${metrics.normCompliance.fwsCapacityCheck.utilization}%)`,
+      `<= ${metrics.fwsTotalCapacityLmin} l/min`,
       metrics.normCompliance.fwsCapacityCheck.status === 'OK' ? 'ERFÜLLT' : 'ÜBERLASTUNG',
       'DIN 1988-300',
     ],
     [
       'Pufferspeicher Vorhaltezeit',
-      `${metrics.normCompliance.bufferDimensioningCheck.autonomyMinutes} min Reserve`,
+      `${metrics.normCompliance.bufferDimensioningCheck.storedMinutes} min Reserve`,
       '>= 15 min Reserve',
       metrics.normCompliance.bufferDimensioningCheck.status === 'OK' ? 'ERFÜLLT' : 'GERING',
       'DIN 4708',
@@ -236,9 +236,9 @@ export function generateInspectionPdf(
     ],
     [
       'Pufferspeicher Nutzinhalt:',
-      `${metrics.totalStorageVolumeLiters} Liter (3x 2.000 L)`,
-      'Nutzbarer Wärmeinhalt:',
-      `${metrics.totalStoredEnergyKwh} kWh`,
+      `${metrics.totalStorageVolumeLiters} L (Gesamt: ${metrics.storedEnergyFullDeltaKwh} kWh)`,
+      'Nutzbare Energie:',
+      `${metrics.totalStoredEnergyKwh} kWh (${metrics.storageCalculationModeLabel.includes('Stufe 2') ? '60% Heißwasser' : metrics.storageCalculationModeLabel})`,
     ],
     [
       'Versorgungsdauer Puffer allein:',

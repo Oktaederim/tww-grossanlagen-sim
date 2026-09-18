@@ -588,13 +588,24 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
         {/* TAB 2: GENERATORS (3x WP + CENTRAL HEATING) */}
         {activeTab === 'generators' && (
           <div className="space-y-6 animate-fade-in">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">
-                Wärmeerzeuger (3x Wärmepumpen à 45 kW + Zentrale Heizung über Wärmetauscher)
-              </h3>
-              <p className="text-xs text-slate-500">
-                Überprüfung der thermischen Leistung, Leistungsaufnahme, COP und N-1 Redundanz
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Wärmeerzeuger (3x Mitsubishi QAHV-N560YA-HPB + 136 kW Plattenwärmetauscher)
+                  </h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    Bestätigter Typenschild-Bestand
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Dokumentierter Referenzpunkt: 40,0 kW thermisch, 10,97 kW elektrisch, COP 3,65 bei A7/W9→65°C.
+                </p>
+              </div>
+              <div className="text-right text-xs">
+                <span className="text-slate-500">Gesamte Erzeugerleistung: </span>
+                <strong className="text-slate-900 font-mono text-sm">{metrics.totalHeatGenerationPowerKw} kW</strong>
+              </div>
             </div>
 
             {/* Heat Pumps Grid */}
@@ -608,11 +619,14 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                       : 'bg-slate-100/60 border-slate-200 opacity-60'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5 text-amber-500" />
-                      Wärmepumpe {idx + 1}
-                    </span>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5 text-amber-500" />
+                        WP {idx + 1}: QAHV-N560YA
+                      </span>
+                      <span className="text-[10px] text-slate-500">CO2-Hochtemperatur-WP</span>
+                    </div>
                     <button
                       type="button"
                       onClick={() => handleWpToggle(wp.id)}
@@ -635,13 +649,14 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                       <input
                         type="range"
                         min="20"
-                        max="70"
+                        max="60"
                         step="1"
                         disabled={!wp.enabled}
                         value={wp.thermalPowerKw}
                         onChange={(e) => handleWpPowerChange(wp.id, Number(e.target.value))}
                         className="w-full accent-amber-500 h-1.5 bg-slate-200 rounded"
                       />
+                      <span className="text-[10px] text-slate-400">Nennleistung nach Typenschild: 40,0 kW</span>
                     </div>
 
                     <div>
@@ -659,6 +674,11 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                         onChange={(e) => handleWpSourceTempChange(wp.id, Number(e.target.value))}
                         className="w-full accent-blue-600 h-1.5 bg-slate-200 rounded"
                       />
+                      <div className="flex justify-between text-[9px] text-slate-400 font-mono">
+                        <span>-10°C</span>
+                        <span>+7°C (Typenschild)</span>
+                        <span>+20°C</span>
+                      </div>
                     </div>
 
                     <div>
@@ -684,8 +704,8 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                     </div>
 
                     <div className="flex justify-between items-center text-slate-600">
-                      <span>Berechneter COP:</span>
-                      <span className="font-mono font-bold text-blue-700">
+                      <span>Berechneter Arbeits-COP:</span>
+                      <span className="font-mono font-bold text-emerald-700">
                         {wp.electricalPowerKw > 0
                           ? (wp.thermalPowerKw / wp.electricalPowerKw).toFixed(2)
                           : '0.00'}
@@ -697,16 +717,21 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
             </div>
 
             {/* Central Heating Heat Exchanger Card */}
-            <div className="p-4 rounded-xl bg-orange-50/50 border border-orange-200">
+            <div className="p-4 rounded-xl bg-blue-50/50 border border-blue-200">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2">
-                  <Flame className="w-5 h-5 text-orange-600 shrink-0" />
+                  <Flame className="w-5 h-5 text-blue-600 shrink-0" />
                   <div>
-                    <h4 className="text-xs font-bold text-orange-950">
-                      136 kW Plattenwärmetauscher (Alternative & zusätzliche Heizung)
-                    </h4>
-                    <p className="text-[11px] text-orange-800">
-                      Alternative Pufferladung bei WP-Ausfall/Wartung oder zusätzlicher 136 kW Spitzenlast-Booster
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-xs font-bold text-blue-950">
+                        136 kW Plattenwärmetauscher (Alternative & zusätzliche Pufferladung)
+                      </h4>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-300">
+                        Planungsstand (70/55 °C)
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-blue-800">
+                      Auslegung laut Planung: 70/55 °C, 7,8 m³/h Heizwasser-Volumenstrom, Anschluss DN40 (nicht mit 75/50 °C rechnen!).
                     </p>
                   </div>
                 </div>
@@ -719,11 +744,13 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                         ...prev,
                         enabled: true,
                         powerKw: 136,
+                        flowTempC: 70,
+                        returnTempC: 55,
                       }))
                     }
-                    className="px-2.5 py-1 rounded text-[11px] font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 cursor-pointer"
+                    className="px-2.5 py-1 rounded text-[11px] font-semibold bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer"
                   >
-                    136 kW Nennlast
+                    Planwert 136 kW (70/55°C)
                   </button>
 
                   <button
@@ -733,7 +760,7 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                     }
                     className={`px-3 py-1 rounded text-xs font-semibold transition cursor-pointer ${
                       centralHeating.enabled
-                        ? 'bg-orange-600 text-white shadow-xs'
+                        ? 'bg-blue-600 text-white shadow-xs'
                         : 'bg-slate-200 text-slate-700'
                     }`}
                   >
@@ -742,7 +769,7 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2 text-xs">
                 <div>
                   <label className="text-slate-700 font-medium block mb-1">
                     Übertragene WT-Leistung (kW)
@@ -761,18 +788,18 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                           powerKw: Math.max(0, Number(e.target.value)),
                         }))
                       }
-                      className="w-full px-2.5 py-1.5 rounded border border-orange-300 font-mono bg-white disabled:bg-slate-100"
+                      className="w-full px-2.5 py-1.5 rounded border border-blue-300 font-mono bg-white disabled:bg-slate-100"
                     />
                     <span className="text-slate-500">kW</span>
                   </div>
                   <span className="text-[10px] text-slate-500 block mt-0.5">
-                    Nennauslegung: 136 kW
+                    Planungs-Nennwert: 136 kW
                   </span>
                 </div>
 
                 <div>
                   <label className="text-slate-700 font-medium block mb-1">
-                    Heizungs-Vorlauftemperatur
+                    Primär-Vorlauf (Planwert)
                   </label>
                   <div className="flex items-center gap-1">
                     <input
@@ -788,15 +815,18 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                           flowTempC: Number(e.target.value),
                         }))
                       }
-                      className="w-full px-2.5 py-1.5 rounded border border-orange-300 font-mono bg-white"
+                      className="w-full px-2.5 py-1.5 rounded border border-blue-300 font-mono bg-white"
                     />
                     <span className="text-slate-500">°C</span>
                   </div>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">
+                    Planwert: 70,0 °C
+                  </span>
                 </div>
 
                 <div>
                   <label className="text-slate-700 font-medium block mb-1">
-                    Heizungs-Rücklauftemperatur
+                    Primär-Rücklauf (Planwert)
                   </label>
                   <div className="flex items-center gap-1">
                     <input
@@ -812,35 +842,128 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                           returnTempC: Number(e.target.value),
                         }))
                       }
-                      className="w-full px-2.5 py-1.5 rounded border border-orange-300 font-mono bg-white"
+                      className="w-full px-2.5 py-1.5 rounded border border-blue-300 font-mono bg-white"
                     />
                     <span className="text-slate-500">°C</span>
                   </div>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">
+                    Planwert: 55,0 °C
+                  </span>
+                </div>
+
+                <div>
+                  <label className="text-slate-700 font-medium block mb-1">
+                    Volumenstrom & Anschluss
+                  </label>
+                  <div className="px-2.5 py-1.5 rounded border border-blue-200 bg-white font-mono text-slate-800">
+                    7,8 m³/h • DN40
+                  </div>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">
+                    Planungsunterlagen
+                  </span>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB 3: BUFFER STORAGE */}
+        {/* TAB 3: BUFFER STORAGE (3-STUFEN-MODELL) */}
         {activeTab === 'storage' && (
           <div className="space-y-6 animate-fade-in">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">
-                Pufferspeicher-Anlage (3 Speicher à 2.000 Liter = 6.000 Liter Gesamtvolumen)
-              </h3>
-              <p className="text-xs text-slate-500">
-                Temperaturschichtung, thermischer Vorrat und Ladezeiten-Berechnung
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Pufferspeicher-Anlage (3 Speicher à 2.000 Liter = 6.000 Liter Gesamtvolumen)
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Transparente Berechnung der nutzbaren Wärmeenergie über ein 3-Stufen-Modell
+                </p>
+              </div>
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-cyan-100 text-cyan-800 border border-cyan-300">
+                {metrics.storageCalculationModeLabel}
+              </span>
+            </div>
+
+            {/* 3-Stufen-Auswahl Modus */}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-300 space-y-3">
+              <label className="text-xs font-bold text-slate-900 block">
+                Berechnungsmodell für die nutzbare Speicherenergie:
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setBuffer((prev) => ({ ...prev, storageCalcMode: 'fully_mixed' }))}
+                  className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                    (buffer.storageCalcMode || 'manual_fraction') === 'fully_mixed'
+                      ? 'bg-white border-cyan-600 shadow-xs ring-2 ring-cyan-500/20'
+                      : 'bg-white/60 border-slate-200 hover:bg-white'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-xs text-slate-900">Stufe 1: Mischtemperatur</span>
+                    {(buffer.storageCalcMode || 'manual_fraction') === 'fully_mixed' && (
+                      <span className="w-2 h-2 rounded-full bg-cyan-600" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-snug">
+                    Einfaches, defensives Modell ohne Schichtung. Berechnet mittlere Temperatur über (T_oben + T_unten)/2.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setBuffer((prev) => ({ ...prev, storageCalcMode: 'manual_fraction' }))}
+                  className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                    (buffer.storageCalcMode || 'manual_fraction') === 'manual_fraction'
+                      ? 'bg-white border-cyan-600 shadow-xs ring-2 ring-cyan-500/20'
+                      : 'bg-white/60 border-slate-200 hover:bg-white'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-xs text-slate-900">Stufe 2: Heißwasseranteil</span>
+                    {(buffer.storageCalcMode || 'manual_fraction') === 'manual_fraction' && (
+                      <span className="w-2 h-2 rounded-full bg-cyan-600" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-snug">
+                    Simulationsannahme (Schieberegler 20–90%). Standard 60% Heißwasserschicht bei Nenntemperatur.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setBuffer((prev) => ({ ...prev, storageCalcMode: 'multi_sensor' }))}
+                  className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                    buffer.storageCalcMode === 'multi_sensor'
+                      ? 'bg-white border-cyan-600 shadow-xs ring-2 ring-cyan-500/20'
+                      : 'bg-white/60 border-slate-200 hover:bg-white'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-xs text-slate-900">Stufe 3: 3-Sensor-Modell</span>
+                    {buffer.storageCalcMode === 'multi_sensor' && (
+                      <span className="w-2 h-2 rounded-full bg-cyan-600" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-snug">
+                    Reale Fühlerwerte (Oben / Mitte / Unten) aus Gebäudeleittechnik oder Vor-Ort-Messung.
+                  </p>
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Dynamic Parameter adjustment based on selected mode */}
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
-                <h4 className="font-bold text-slate-900">Temperaturen & Schichtung</h4>
+                <h4 className="font-bold text-slate-900">
+                  {buffer.storageCalcMode === 'multi_sensor'
+                    ? '3-Sensor Temperaturmessung'
+                    : 'Puffertemperaturen'}
+                </h4>
 
                 <div>
                   <div className="flex justify-between text-slate-700 mb-1">
-                    <span>Speicher-Kopftemperatur (oben)</span>
+                    <span>Speicher-Kopftemperatur (T_oben)</span>
                     <span className="font-bold font-mono text-red-600">{buffer.topTempC} °C</span>
                   </div>
                   <input
@@ -850,18 +973,50 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                     step="0.5"
                     value={buffer.topTempC}
                     onChange={(e) =>
-                      setBuffer((prev) => ({ ...prev, topTempC: Number(e.target.value) }))
+                      setBuffer((prev) => ({
+                        ...prev,
+                        topTempC: Number(e.target.value),
+                        sensorTopTempC: Number(e.target.value),
+                      }))
                     }
                     className="w-full accent-red-600 h-1.5 bg-slate-200 rounded"
                   />
                   <span className="text-[10px] text-slate-400">
-                    Soll für FWS-Primärvorlauf (mind. 60-65°C empfohlen)
+                    Soll für FWS-Primärvorlauf (mind. 60–65°C)
                   </span>
                 </div>
 
+                {buffer.storageCalcMode === 'multi_sensor' && (
+                  <div>
+                    <div className="flex justify-between text-slate-700 mb-1">
+                      <span>Mittlerer Sensor (T_mitte)</span>
+                      <span className="font-bold font-mono text-amber-600">
+                        {buffer.sensorMidTempC ?? 48.0} °C
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="30"
+                      max="65"
+                      step="0.5"
+                      value={buffer.sensorMidTempC ?? 48.0}
+                      onChange={(e) =>
+                        setBuffer((prev) => ({
+                          ...prev,
+                          sensorMidTempC: Number(e.target.value),
+                        }))
+                      }
+                      className="w-full accent-amber-500 h-1.5 bg-slate-200 rounded"
+                    />
+                    <span className="text-[10px] text-slate-400">
+                      Trennschicht / Umschaltpunkt 3-Wege-Ventil
+                    </span>
+                  </div>
+                )}
+
                 <div>
                   <div className="flex justify-between text-slate-700 mb-1">
-                    <span>Speicher-Fußtemperatur (unten)</span>
+                    <span>Speicher-Fußtemperatur (T_unten)</span>
                     <span className="font-bold font-mono text-blue-600">{buffer.bottomTempC} °C</span>
                   </div>
                   <input
@@ -871,18 +1026,56 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                     step="0.5"
                     value={buffer.bottomTempC}
                     onChange={(e) =>
-                      setBuffer((prev) => ({ ...prev, bottomTempC: Number(e.target.value) }))
+                      setBuffer((prev) => ({
+                        ...prev,
+                        bottomTempC: Number(e.target.value),
+                        sensorBottomTempC: Number(e.target.value),
+                      }))
                     }
                     className="w-full accent-blue-600 h-1.5 bg-slate-200 rounded"
                   />
                   <span className="text-[10px] text-slate-400">
-                    Gute FWS-Auskühlung senkt diese Temperatur (besserer WP-COP!)
+                    Kühler Fußbereich sichert hohen WP-COP
                   </span>
                 </div>
+
+                {/* Slider for manual_fraction */}
+                {(buffer.storageCalcMode || 'manual_fraction') === 'manual_fraction' && (
+                  <div className="pt-2 border-t border-slate-200">
+                    <div className="flex justify-between text-slate-700 mb-1">
+                      <span className="font-semibold text-cyan-900">
+                        Heißwasser-Nutzanteil (Annahme)
+                      </span>
+                      <span className="font-bold font-mono text-cyan-700">
+                        {Math.round((buffer.hotLayerFraction ?? 0.6) * 100)} %
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.2"
+                      max="0.9"
+                      step="0.05"
+                      value={buffer.hotLayerFraction ?? 0.6}
+                      onChange={(e) =>
+                        setBuffer((prev) => ({
+                          ...prev,
+                          hotLayerFraction: Number(e.target.value),
+                        }))
+                      }
+                      className="w-full accent-cyan-600 h-1.5 bg-slate-200 rounded"
+                    />
+                    <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
+                      <span>20% (Konservativ)</span>
+                      <span>60% (Standard)</span>
+                      <span>90% (Voll)</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
+              {/* Target parameters and boundaries */}
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
-                <h4 className="font-bold text-slate-900">Zielparameter & Grenzen</h4>
+                <h4 className="font-bold text-slate-900">Zielparameter & Schwellen</h4>
 
                 <div>
                   <label className="font-medium text-slate-700 block mb-1">
@@ -922,20 +1115,38 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                     }
                     className="w-full px-2.5 py-1.5 rounded border border-slate-300 font-mono bg-white"
                   />
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    FWS benötigt mind. 60°C TWW + Wärmetauscher-Grädigkeit
+                  </span>
+                </div>
+
+                <div className="p-2.5 rounded bg-white border border-slate-200 text-[11px] space-y-1">
+                  <div className="font-semibold text-slate-800">Modell-Erklärung:</div>
+                  <p className="text-slate-600 leading-snug">
+                    {metrics.storageCalculationExplanation}
+                  </p>
                 </div>
               </div>
 
-              {/* Storage Energetics KPI card */}
+              {/* Storage Energetics KPI card with both Usable Energy and Full Enthalpy */}
               <div className="p-4 rounded-xl bg-cyan-50/60 border border-cyan-200 space-y-2.5 text-xs">
                 <h4 className="font-bold text-cyan-950">Speicher-Berechnungsergebnis</h4>
                 <div className="flex justify-between text-slate-700">
                   <span>Gesamtvolumen:</span>
                   <span className="font-bold font-mono">6.000 Liter (6,0 m³)</span>
                 </div>
-                <div className="flex justify-between text-slate-700">
-                  <span>Nutzbare Wärmeenergie:</span>
-                  <span className="font-bold font-mono text-cyan-800">
+                <div className="flex justify-between text-slate-700 border-b border-cyan-200 pb-1.5">
+                  <span className="font-semibold text-cyan-950">
+                    Nutzbare Wärmeenergie ({metrics.storageCalculationModeLabel}):
+                  </span>
+                  <span className="font-bold font-mono text-cyan-800 text-sm">
                     {metrics.totalStoredEnergyKwh} kWh
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-700">
+                  <span className="text-slate-600">Gesamter Wärmeinhalt über Rücklauf:</span>
+                  <span className="font-bold font-mono text-slate-800">
+                    {metrics.storedEnergyFullDeltaKwh} kWh
                   </span>
                 </div>
                 <div className="flex justify-between text-slate-700">
@@ -951,7 +1162,7 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                   </span>
                 </div>
                 <p className="text-[10px] text-cyan-900 mt-1">
-                  Bei {metrics.totalHeatGenerationPowerKw} kW Gesamterzeugung von kalt auf Soll.
+                  Bei {metrics.totalHeatGenerationPowerKw} kW Gesamterzeugung.
                 </p>
               </div>
             </div>
@@ -961,13 +1172,49 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
         {/* TAB 4: FRESH WATER STATIONS (4x FWS) */}
         {activeTab === 'fws' && (
           <div className="space-y-6 animate-fade-in">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">
-                Frischwasserstationen (4x FWS in Kaskadenschaltung)
-              </h3>
-              <p className="text-xs text-slate-500">
-                Warmwasserbereitung im Durchflussprinzip nach DIN 1988-300 und DVGW W 551
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Frischwasserstationen (4x Danfoss FWS 130 kW in Kaskadenschaltung)
+                  </h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                    Typenschild 70/25°C • Prüfpunkt 65°C
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Nennleistung nach Typenschild: 130 kW bzw. 37,3 l/min je Station bei 70/25 → 10/60 °C (Kaskade: 149,2 l/min).
+                </p>
+              </div>
+              <div className="text-right text-xs">
+                <span className="text-slate-500">Auslastung: </span>
+                <strong className={`font-mono text-sm ${metrics.fwsCapacityUtilizationPercent > 100 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                  {metrics.fwsCapacityUtilizationPercent} %
+                </strong>
+              </div>
+            </div>
+
+            {/* Thermal margin / Operating rating notice banner */}
+            <div className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 ${
+              metrics.thermalMarginStatus === 'CRITICAL'
+                ? 'bg-rose-50 border-rose-300 text-rose-900'
+                : metrics.thermalMarginStatus === 'TIGHT'
+                ? 'bg-amber-50 border-amber-300 text-amber-900'
+                : 'bg-emerald-50 border-emerald-300 text-emerald-900'
+            }`}>
+              <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <strong className="block font-semibold">
+                  Thermischer Betriebsstatus & Übertragungsleistung:
+                </strong>
+                <p className="mt-0.5 text-[11px] leading-relaxed">
+                  {metrics.thermalMarginNotice}
+                </p>
+                <div className="mt-1 pt-1 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
+                  <span>{metrics.fwsOperatingNotice}</span>
+                  <span className="font-semibold">Auslegungs-Klassifizierung: {metrics.fwsOperatingRating}</span>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -993,24 +1240,24 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                     className="w-full accent-teal-600 h-2 bg-slate-200 rounded cursor-pointer"
                   />
                   <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-                    <span>1 FWS (50 l/min)</span>
-                    <span>2 FWS (100 l/min)</span>
-                    <span>3 FWS (150 l/min)</span>
-                    <span>4 FWS (200 l/min)</span>
+                    <span>1 FWS (37,3 l/min Nenn)</span>
+                    <span>2 FWS (74,6 l/min)</span>
+                    <span>3 FWS (111,9 l/min)</span>
+                    <span>4 FWS (149,2 l/min)</span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   <div>
                     <label className="font-medium text-slate-700 block mb-1">
-                      Nennleistung je FWS
+                      Nennleistung je FWS (Typenschild)
                     </label>
                     <div className="flex items-center gap-1">
                       <input
                         type="number"
                         min="20"
                         max="100"
-                        step="5"
+                        step="0.1"
                         value={fws.ratedCapacityPerStationLmin}
                         onChange={(e) =>
                           setFws((prev) => ({
@@ -1022,6 +1269,9 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                       />
                       <span className="text-slate-500">l/min</span>
                     </div>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">
+                      Typenschild: 37,3 l/min (130 kW)
+                    </span>
                   </div>
 
                   <div>
@@ -1106,6 +1356,9 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                       }
                       className="w-full px-2.5 py-1.5 rounded border border-slate-300 font-mono bg-white"
                     />
+                    <span className="text-[10px] text-amber-700 font-medium block mt-0.5">
+                      Prüfpunkt: 65°C Primär
+                    </span>
                   </div>
 
                   <div>
@@ -1151,14 +1404,16 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                       <Droplets className="w-3.5 h-3.5 text-blue-600" />
                       Trinkwasserzähler (Zulauf FWS)
                     </span>
-                    {metrics.waterMeterDeltaM3 !== undefined && (
+                    {metrics.waterMeterDeltaM3 !== undefined ? (
                       <span className="font-bold font-mono text-xs text-blue-700">
                         Δ {metrics.waterMeterDeltaM3} m³ ({metrics.waterMeterThermalEnergyKwh} kWh)
                       </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-500 italic">Noch kein Zählerstand erfasst</span>
                     )}
                   </div>
                   <p className="text-[11px] text-blue-800 leading-snug">
-                    Wasserzähler in der Kaltwasser-Zulaufleitung zu den 4 Frischwasserstationen zur exakten Verbrauchserfassung und Effizienzkontrolle.
+                    {metrics.waterMeterEnergyNote}
                   </p>
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <div>
@@ -1174,6 +1429,7 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                           setFws((prev) => ({
                             ...prev,
                             waterMeterReadingM3: e.target.value === '' ? undefined : Number(e.target.value),
+                            waterMeterIsSample: false,
                           }))
                         }
                         placeholder="z.B. 1428.65"
@@ -1193,12 +1449,45 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                           setFws((prev) => ({
                             ...prev,
                             waterMeterLastReadingM3: e.target.value === '' ? undefined : Number(e.target.value),
+                            waterMeterIsSample: false,
                           }))
                         }
                         placeholder="z.B. 1420.20"
                         className="w-full px-2 py-1 text-xs rounded border border-blue-300 font-mono bg-white"
                       />
                     </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-1 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFws((prev) => ({
+                          ...prev,
+                          waterMeterReadingM3: 1428.65,
+                          waterMeterLastReadingM3: 1420.20,
+                          waterMeterIsSample: true,
+                        }))
+                      }
+                      className="text-blue-700 hover:text-blue-900 underline cursor-pointer"
+                    >
+                      Muster-Zählerstand laden (Demo)
+                    </button>
+                    {(fws.waterMeterReadingM3 !== undefined || fws.waterMeterLastReadingM3 !== undefined) && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFws((prev) => ({
+                            ...prev,
+                            waterMeterReadingM3: undefined,
+                            waterMeterLastReadingM3: undefined,
+                            waterMeterIsSample: false,
+                          }))
+                        }
+                        className="text-slate-500 hover:text-slate-700 underline cursor-pointer"
+                      >
+                        Zählerstand leeren
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

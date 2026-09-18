@@ -82,7 +82,7 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
             }`}
           >
             <Zap className="w-3.5 h-3.5" />
-            <span>3x Wärmepumpen (135 kW)</span>
+            <span>3x Wärmepumpen (120 kW th)</span>
           </button>
 
           <button
@@ -95,7 +95,7 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
             }`}
           >
             <Flame className="w-3.5 h-3.5" />
-            <span>136 kW Wärmetauscher</span>
+            <span>136 kW Wärmetauscher (70/55°C)</span>
           </button>
 
           <button
@@ -121,7 +121,7 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
             }`}
           >
             <Droplets className="w-3.5 h-3.5" />
-            <span>4x Frischwasserstationen (200 l/min)</span>
+            <span>4x Frischwasserstationen (149,2 l/min)</span>
           </button>
 
           <button
@@ -148,10 +148,10 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
               <div>
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <Zap className="w-4 h-4 text-amber-500" />
-                  Wärmepumpen-Kaskade (3 Einheiten à 45 kW th = 135 kW Gesamtwärmeleistung)
+                  Wärmepumpen-Kaskade (3x Mitsubishi QAHV-N560YA-HPB à 40,0 kW th = 120,0 kW)
                 </h3>
                 <p className="text-slate-500 mt-0.5">
-                  Hocheffiziente primäre Wärmeerzeugung zur Grund-, Mittel- und Spitzenlastabdeckung
+                  Dokumentierter Typenschild-Bestand: 40,0 kW th, 10,97 kW el, COP 3,65 bei A7/W9→65°C.
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -168,26 +168,26 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
                 <span className="text-[11px] text-slate-500 font-medium block">Thermische Nennleistung</span>
-                <span className="text-base font-bold text-slate-900 font-mono">3x 45,0 kW</span>
-                <span className="text-[10px] text-slate-500 block mt-0.5">135,0 kW bei Volllast aller 3 WP</span>
+                <span className="text-base font-bold text-slate-900 font-mono">3x 40,0 kW</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">120,0 kW bei Volllast aller 3 WP</span>
               </div>
 
               <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
                 <span className="text-[11px] text-slate-500 font-medium block">Elektrische Leistungsaufnahme</span>
-                <span className="text-base font-bold text-slate-900 font-mono">3x 13,2 kW</span>
-                <span className="text-[10px] text-slate-500 block mt-0.5">Pel gesamt: 39,6 kW bei Volllast</span>
+                <span className="text-base font-bold text-slate-900 font-mono">3x 10,97 kW</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">Pel gesamt: 32,9 kW bei A7/65°C</span>
               </div>
 
               <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
                 <span className="text-[11px] text-slate-500 font-medium block">Auslegungs-Vorlauftemperatur</span>
                 <span className="text-base font-bold text-amber-600 font-mono">65,0 °C</span>
-                <span className="text-[10px] text-slate-500 block mt-0.5">Zur Pufferladung oben (FWS-Soll)</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">CO2-Hochtemperatur-Transkritisch</span>
               </div>
 
               <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
                 <span className="text-[11px] text-slate-500 font-medium block">Optimaler Rücklauf (WP-Eintritt)</span>
                 <span className="text-base font-bold text-emerald-600 font-mono">≤ 30,0 °C</span>
-                <span className="text-[10px] text-slate-500 block mt-0.5">Garant für hohen COP & Effizienz</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">Typenschild-Referenz W9→65°C</span>
               </div>
             </div>
 
@@ -202,7 +202,7 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
                     <span className="w-2 h-2 rounded-full bg-emerald-500" />
                     Grundlast (WP 1)
                   </div>
-                  <div className="text-slate-600">45 kW th | Pel: 13,2 kW</div>
+                  <div className="text-slate-600">40 kW th | Pel: 11,0 kW</div>
                   <div className="md:col-span-2 text-slate-600">
                     Deckung der Zirkulationsverluste (ca. 2,6 kW) und kontinuierliche Nachladung bei Schwachlast.
                   </div>
@@ -213,7 +213,7 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
                     <span className="w-2 h-2 rounded-full bg-blue-500" />
                     Mittellast (WP 1 + WP 2)
                   </div>
-                  <div className="text-slate-600">90 kW th | Pel: 26,4 kW</div>
+                  <div className="text-slate-600">80 kW th | Pel: 21,9 kW</div>
                   <div className="md:col-span-2 text-slate-600">
                     Normaler Tagesduschbetrieb (z.B. bis zu 15–20 aktive Duschpaneele parallel).
                   </div>
@@ -224,7 +224,7 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
                     <span className="w-2 h-2 rounded-full bg-amber-500" />
                     Volllast (WP 1 + 2 + 3)
                   </div>
-                  <div className="text-slate-600">135 kW th | Pel: 39,6 kW</div>
+                  <div className="text-slate-600">120 kW th | Pel: 32,9 kW</div>
                   <div className="md:col-span-2 text-slate-600">
                     Starker Duschbetrieb oder zügiges Wiederaufheizen der 6.000 L Pufferspeicher nach Trainingsende.
                   </div>
@@ -235,7 +235,7 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
                     <span className="w-2 h-2 rounded-full bg-rose-500" />
                     N-1 Redundanz (1 WP gestört)
                   </div>
-                  <div className="text-slate-600">90 kW th (Restleistung)</div>
+                  <div className="text-slate-600">80 kW th (Restleistung)</div>
                   <div className="md:col-span-2 text-slate-600">
                     Automatisches Zuschalten des 136 kW Wärmetauschers verhindert Komforteinbrüche bei Ausfall einer WP.
                   </div>
@@ -253,7 +253,7 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
                 <p className="text-amber-900 mt-0.5 leading-relaxed">
                   Die Wärmepumpen sind hydraulisch parallel in die 3 Pufferspeicher eingebunden. Für einen optimalen COP (Jahresarbeitszahl)
                   ist entscheidend, dass der Speicher-Fußbereich durch die Frischwasserstationen kalt bleibt (unter 30°C). Steigt der Rücklauf
-                  über 45°C an, sinkt der COP signifikant von ~3,4 auf unter 2,5. Prüfen Sie daher bei Wartungsterminen immer die
+                  über 45°C an, sinkt der COP signifikant von ~3,65 auf unter 2,5. Prüfen Sie daher bei Wartungsterminen immer die
                   Spreizung und Rücklauftemperatur an den FWS-Sekundärseiten.
                 </p>
               </div>
@@ -268,10 +268,10 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
               <div>
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <Flame className="w-4 h-4 text-orange-600" />
-                  136 kW Plattenwärmetauscher für die zentrale Heizung
+                  136 kW Plattenwärmetauscher (Planungsstand 70/55 °C)
                 </h3>
                 <p className="text-slate-500 mt-0.5">
-                  Leistungsdaten, Doppelfunktion (Alternative & Zusätzliche Heizung) und hydraulische Einbindung
+                  Planungsunterlagen: 70/55 °C, 7,8 m³/h Heizwasser, DN40 (nicht mit 75/50 °C rechnen!).
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -299,8 +299,8 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
                 </div>
                 <p className="text-slate-700 leading-relaxed">
                   Wenn bei Großveranstaltungen, Wettkämpfen oder Schichtende alle 50 Duschpaneele zeitgleich genutzt werden,
-                  liegt der Warmwasser-Spitzenbedarf bei über <strong>180–200 kW</strong>. Zusammen mit den Wärmepumpen (135 kW)
-                  stellt der 136 kW Wärmetauscher eine <strong>kombinierte Gesamt-Heizleistung von 271 kW</strong> bereit.
+                  liegt der Warmwasser-Spitzenbedarf bei über <strong>180–200 kW</strong>. Zusammen mit den Wärmepumpen (120 kW)
+                  stellt der 136 kW Wärmetauscher eine <strong>kombinierte Gesamt-Heizleistung von 256 kW</strong> bereit.
                   Dadurch wird ein Auskühlen der 6.000 L Pufferspeicher selbst bei Dauerbetrieb zuverlässig verhindert.
                 </p>
               </div>
@@ -328,26 +328,26 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
               </div>
 
               <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-                <span className="text-[11px] text-slate-500 font-medium block">Heizungs-Vorlauf (Primär)</span>
-                <span className="text-base font-bold text-orange-600 font-mono">75,0 °C</span>
-                <span className="text-[10px] text-slate-500 block mt-0.5">Aus Kessel-/Fernwärmenetz</span>
+                <span className="text-[11px] text-slate-500 font-medium block">Heizungs-Vorlauf (Planwert)</span>
+                <span className="text-base font-bold text-orange-600 font-mono">70,0 °C</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">Planungsunterlagen: 70/55 °C</span>
               </div>
 
               <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-                <span className="text-[11px] text-slate-500 font-medium block">Rücklauf-Begrenzung (Primär)</span>
-                <span className="text-base font-bold text-slate-900 font-mono">≤ 50,0 °C</span>
-                <span className="text-[10px] text-slate-500 block mt-0.5">Rücklauftemperaturbegrenzer aktiv</span>
+                <span className="text-[11px] text-slate-500 font-medium block">Heizungs-Rücklauf (Planwert)</span>
+                <span className="text-base font-bold text-slate-900 font-mono">55,0 °C</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">Volumenstrom 7,8 m³/h • DN40</span>
               </div>
             </div>
 
             {/* Performance Comparison Box */}
             <div className="p-3.5 rounded-lg bg-slate-900 text-white border border-slate-800 space-y-2">
               <span className="font-bold text-xs text-orange-400 block">
-                Vergleich der Nachladezeiten für 1 Duschgang (6 Min, {metrics.activeShowersCount} aktive Duschen):
+                Vergleich der Nachladezeiten für 1 Duschgang ({metrics.activeShowersCount} aktive Duschen):
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 <div className="bg-slate-800 p-2.5 rounded border border-slate-700">
-                  <span className="text-slate-400 block text-[10px]">Reiner WP-Betrieb (135 kW)</span>
+                  <span className="text-slate-400 block text-[10px]">Reiner WP-Betrieb (120 kW)</span>
                   <span className="text-base font-bold text-white font-mono">
                     {metrics.showerSessionRechargeTimeWpMinutes} Min.
                   </span>
@@ -363,7 +363,7 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
                 </div>
 
                 <div className="bg-slate-800 p-2.5 rounded border border-orange-500/50">
-                  <span className="text-orange-400 block text-[10px]">Hybrid: WP + 136 kW WT (271 kW)</span>
+                  <span className="text-orange-400 block text-[10px]">Hybrid: WP + 136 kW WT (256 kW)</span>
                   <span className="text-base font-bold text-emerald-400 font-mono">
                     {metrics.showerSessionRechargeTimeCombinedMinutes} Min.
                   </span>
@@ -493,10 +493,10 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
               <div>
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <Droplets className="w-4 h-4 text-blue-600" />
-                  Frischwasserstationen-Kaskade (4 Stationen à 50 l/min = 200 l/min Gesamtleistung)
+                  Frischwasserstationen-Kaskade (4 Stationen à 130 kW / 37,3 l/min = 149,2 l/min Gesamtleistung)
                 </h3>
                 <p className="text-slate-500 mt-0.5">
-                  Hygienische Trinkwassererwärmung im Durchflussprinzip mit elektronischer Kaskadenregelung
+                  Nennkapazität bei 70/25°C primär nach Datenblatt. Bei 65°C Puffer-Vorlauf greift die thermische Pinch-Einschränkung.
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -534,7 +534,7 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
                 </h4>
                 <p className="text-slate-700 leading-relaxed">
                   Die 4 Stationen werden über integrierte Vortex-Durchflusssensoren geschaltet:
-                  Bei geringem Bedarf (1–5 Duschen) arbeitet nur Station 1. Steigt der Durchfluss über 40 l/min,
+                  Bei geringem Bedarf (1–5 Duschen) arbeitet nur Station 1. Steigt der Durchfluss über 30 l/min,
                   schaltet Station 2 modulierend hinzu, gefolgt von 3 und 4 bei Volllast. Um Betriebsstunden
                   gleichmäßig zu verteilen, wechselt der Regler alle 24–48 Betriebsstunden die Führungsstation.
                 </p>
@@ -545,13 +545,13 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
                 <span className="text-[11px] text-slate-500 font-medium block">Warmwasser-Nennkapazität</span>
-                <span className="text-base font-bold text-slate-900 font-mono">200 l/min (12 m³/h)</span>
-                <span className="text-[10px] text-slate-500 block mt-0.5">Bei 60°C Auslauftemperatur</span>
+                <span className="text-base font-bold text-slate-900 font-mono">149,2 l/min (8,95 m³/h)</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">4x 37,3 l/min (130 kW bei 70/25°C)</span>
               </div>
 
               <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
                 <span className="text-[11px] text-slate-500 font-medium block">Primär-Rücklauftemperatur</span>
-                <span className="text-base font-bold text-emerald-600 font-mono">28,0 °C</span>
+                <span className="text-base font-bold text-emerald-600 font-mono">25,0 - 28,0 °C</span>
                 <span className="text-[10px] text-slate-500 block mt-0.5">Exzellente Auskühlung für die WP</span>
               </div>
 

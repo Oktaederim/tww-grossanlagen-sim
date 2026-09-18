@@ -1,19 +1,23 @@
+export type StorageCalculationMode = 'fully_mixed' | 'manual_fraction' | 'multi_sensor';
+
 export interface HeatPumpConfig {
   id: string;
   name: string;
   enabled: boolean;
-  thermalPowerKw: number; // Thermische Heizleistung (kW)
-  electricalPowerKw: number; // Elektrische Leistungsaufnahme (kW)
-  sourceTempC: number; // z.B. Außenluft oder Sole (°C)
-  flowTempC: number; // Vorlauftemperatur (°C)
+  thermalPowerKw: number; // Thermische Heizleistung (kW) - Nennwert: 40.0 kW (Mitsubishi QAHV)
+  electricalPowerKw: number; // Elektrische Leistungsaufnahme (kW) - Nennwert: 10.97 kW
+  sourceTempC: number; // z.B. Außenluft (°C) - Nennpunkt: 7°C
+  flowTempC: number; // Vorlauftemperatur (°C) - Nennpunkt: 65°C
   manualCop?: number;
 }
 
 export interface CentralHeatingConfig {
   enabled: boolean;
-  powerKw: number; // Leistung über Plattenwärmetauscher (kW)
-  flowTempC: number; // Vorlauftemperatur Zentralheizung (°C)
-  returnTempC: number; // Rücklauftemperatur Zentralheizung (°C)
+  powerKw: number; // Leistung über Plattenwärmetauscher (kW) - Planwert: 136 kW
+  flowTempC: number; // Vorlauftemperatur Zentralheizung (°C) - Planwert: 70°C
+  returnTempC: number; // Rücklauftemperatur Zentralheizung (°C) - Planwert: 55°C
+  flowRateM3h?: number; // Planwert: 7.8 m³/h
+  nominalPipe?: string; // Planwert: DN40
 }
 
 export interface BufferStorageConfig {
@@ -23,24 +27,28 @@ export interface BufferStorageConfig {
   topTempC: number; // Obere Speichertemperatur (°C) - z.B. 65°C
   bottomTempC: number; // Untere Speichertemperatur (°C) - z.B. 30°C
   targetChargingTempC: number; // Solltemperatur Beladung (°C) - z.B. 65°C
-  minUsableTempC: number; // Mindestnutztemperatur für FWS (°C) - z.B. 60°C (inkl. Grädigkeit)
+  minUsableTempC: number; // Mindestnutztemperatur für FWS (°C) - z.B. 60°C
   ambientTempC: number; // Aufstellraumtemperatur (°C) - z.B. 18°C
   insulationLossKwh24h: number; // Speicherverluste (kWh/24h) - z.B. 7.5 kWh/24h
-  hotLayerFraction: number; // Geschätzter Heißwasseranteil im Schichtspeicher (0.0 - 1.0)
+  hotLayerFraction: number; // Vom Benutzer gewählte Heißwasserschicht bei manual_fraction (0.1 - 1.0)
+  storageCalcMode: StorageCalculationMode; // 3 Stufen: fully_mixed | manual_fraction | multi_sensor
+  sensorTopTempC: number; // Sensor Puffer oben (°C)
+  sensorMidTempC: number; // Sensor Puffer mitte (°C)
+  sensorBottomTempC: number; // Sensor Puffer unten (°C)
 }
 
 export interface FreshWaterStationConfig {
-  count: number; // 4 FWS
-  ratedCapacityPerStationLmin: number; // Reale Nennkapazität z.B. 37.3 l/min (130 kW bei 10->60°C)
-  ratedPowerPerStationKw: number; // Nennwärmeleistung z.B. 130 kW je FWS
-  primaryFlowTempC: number; // Heizungswasser Vorlauf (°C) aus Puffer 2
+  count: number; // 4 FWS (Danfoss TD-FLS 130 kW PUMP-CTRL ECL)
+  ratedCapacityPerStationLmin: number; // Nennkapazität 37.3 l/min je FWS (130 kW bei 70/25 -> 10/60°C)
+  ratedPowerPerStationKw: number; // Nennwärmeleistung 130 kW je FWS bei 70/25°C
+  primaryFlowTempC: number; // Heizungswasser Vorlauf (°C) aus Puffer 2 (aktuell simuliert: 65°C)
   primaryReturnTempC: number; // Heizungswasser Rücklauf (°C)
   coldWaterInletTempC: number; // Kaltwasserzulauf (°C) - ca. 10°C
-  hotWaterOutletTempC: number; // Warmwasseraustritt (°C) - Norm: >= 60°C
-  activeStations: number; // Wie viele FWS aktuell in Betrieb sind (0-4)
-  // Trinkwasser-Zulaufzähler vor den FWS
+  hotWaterOutletTempC: number; // Warmwasseraustritt (°C) - Sollwert: 60°C
+  activeStations: number; // Aktive FWS (0-4)
   waterMeterReadingM3?: number; // Zählerstand Trinkwasser in m³
-  waterMeterLastReadingM3?: number; // Vorheriger Zählerstand zur Differenzermittlung
+  waterMeterLastReadingM3?: number; // Vorheriger Zählerstand
+  waterMeterIsSample?: boolean; // Kennzeichnung als Beispieldaten
 }
 
 export interface SanitaryConsumerConfig {
@@ -99,15 +107,20 @@ export interface SystemCalculations {
   
   // Frischwasserstationen Kapazität
   fwsTotalCapacityLmin: number;
+  fwsNominalCapacityLmin: number; // 149.2 l/min bei 70/25°C Nennpunkt (Typenschild)
   fwsCapacityUtilizationPercent: number;
   fwsSufficient: boolean;
+  fwsOperatingRating: 'NOMINAL_CONFIRMED_70C' | 'UNPROVEN_AT_65C_PRIMARY' | 'CRITICAL_UNDER_65C';
+  fwsOperatingNotice: string; // Transparenter Hinweis zum Nenn- vs. 65°C-Prüfpunkt
   requiredPrimaryFlowLh: number; // Erforderlicher Heizwasservolumenstrom
   
-  // Versorgungsdauer & Autonomie (mit physikalischem Veto)
+  // Versorgungsdauer & Autonomie (ohne starres 4-K-Veto, mit differenziertem Status)
   autonomyStorageOnlyMinutes: number; // Dauer bei reinem Speicherbetrieb bis leer
   autonomyWithGenerationMinutes: number; // Dauer mit aktiven Erzeugern
   continuousFlowCoveragePercent: number; // Dauerdeckungsgrad (Erzeugung / Bedarf)
-  isThermalSupplyFeasible: boolean; // Physikalisches Veto: Puffer-Vorlauf >= TWW-Soll + Grädigkeit
+  isThermalSupplyFeasible: boolean; // Physikalisches Veto nur bei echtem Defizit
+  thermalMarginStatus: 'ADEQUATE' | 'CRITICAL_MARGIN' | 'INSUFFICIENT';
+  thermalMarginNotice: string;
   supplyInfeasibilityReason?: string; // Begründung bei Nichtversorgbarkeit
   isHydraulicOverloaded: boolean; // Ob FWS-Durchfluss überschritten ist
 
@@ -115,9 +128,18 @@ export interface SystemCalculations {
   fwsReturnValvePosition: 'BOTTOM_STRAT' | 'MID_STRAT'; // <30°C unten, >=30°C mittig in Puffer 3
   fwsReturnValveReason: string;
 
-  // Trinkwasserzähler-Messung & Analyse
+  // Speicherberechnungs-Transparenz (3 Stufen)
+  storageCalculationModeLabel: string;
+  storageCalculationExplanation: string;
+
+  // Trinkwasserzähler-Messung & Analyse (kein geeichter WMZ)
   waterMeterDeltaM3?: number; // Gemessenes Zapfvolumen
-  waterMeterThermalEnergyKwh?: number; // Gemessene thermische Energie am Zähler
+  waterMeterThermalEnergyKwh?: number; // Rechnerische thermische Energie am Zähler
+  waterMeterEnergyNote: string;
+  
+  // Mitsubishi QAHV Dokumentationsstatus
+  isQahvDocumentedPoint: boolean;
+  qahvCopReferenceText: string;
   
   // Analyse der Betriebszustände & Speicherladung
   netPowerBalanceKw: number; // Erzeugung - (Last + Zirkulation). Positiv = Speicher lädt, Negativ = Speicher entlädt

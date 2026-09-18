@@ -19,32 +19,56 @@ export const WATER_DENSITY_KG_L = 1.0;
  * Nach DIN EN 12831-3 / VDI 2072 benötigt die FWS primärseitig eine Temperatur,
  * die mind. um die Grädigkeit (ca. 4-5 K) über der geforderten TWW-Solltemperatur liegt.
  */
-export const FWS_HEAT_EXCHANGER_MIN_PINCH_POINT_K = 4.0;
-
 /**
- * Berechnet den thermodynamischen COP einer Trinkwarmwasser-Wärmepumpe
- * basierend auf Quellentemperatur (T_Quelle), Speichervorlauftemperatur (T_VL)
- * und Pufferrücklauftemperatur (T_RL unten).
+ * Berechnet den COP einer Trinkwarmwasser-Wärmepumpe.
  *
- * Realer Typenschild-/Prüfstandsbezug: W10 / W60 / RL30 -> typischer TWW-COP ~3.1 - 3.4.
- * Bei W7 / W65 (Hochtemperatur-TWW-Hub 58 K) liegt der maximale physikalische
- * Scroll-/Hubkolben-COP in Großanlagen bei ca. 2.6 - 3.0.
+ * Referenz- und Dokumentationsbasis:
+ * Mitsubishi QAHV-N560YA-HPB (CO2 / R744 Hochtemperatur-Wärmepumpe):
+ * Typenschild-Referenzpunkt A7/W9->65°C:
+ * - Thermische Leistung: 40,0 kW
+ * - Elektrische Leistungsaufnahme: 10,97 kW
+ * - Typenschild-COP: 3,65
+ * (Luft: 7/6 °C, Wasser: 9/65 °C).
+ *
+ * Wichtige fachliche Regel:
+ * Der dokumentierte Betriebspunkt A7/W9→65, 40 kW, 10,97 kW, COP 3,65 ist der
+ * verbindliche Anlagen-Referenzpunkt. Bei abweichenden Betriebsbedingungen
+ * wird eine an die Carnot-Güte angelehnte Schätzung mit deklariertem
+ * Simulationsstatus vorgenommen.
  */
 export function calculateDynamicCop(
   sourceTempC: number,
   flowTempC: number,
   bufferBottomTempC: number = 30
 ): number {
-  // Realistische Basis bei W7 / W65 / RL30: COP = 2.85
-  const baseCop = 2.85;
-  const deltaSource = sourceTempC - 7.0; // ~ +2.0% COP je K wärmere Quelle
-  const deltaFlow = 65.0 - flowTempC; // ~ +1.8% COP je K kälterer Vorlauf
-  const deltaReturnPenalty = Math.max(0, bufferBottomTempC - 30.0) * 0.015; // Strafe bei Verlust der Pufferschichtung
-  
-  const copFactor = 1.0 + (deltaSource * 0.020) + (deltaFlow * 0.018) - deltaReturnPenalty;
-  const rawCop = baseCop * copFactor;
-  // Physikalischer Deckel für 65°C TWW-Hub: max 4.4 bei hoher Quellentemperatur, min 1.6
-  return Math.round(Math.min(4.4, Math.max(1.6, rawCop)) * 100) / 100;
+  const NOMINAL_SOURCE_TEMP = 7.0;
+  const NOMINAL_FLOW_TEMP = 65.0;
+  const NOMINAL_COP = 3.65; // Mitsubishi QAHV: 40.0 kW / 10.97 kW
+
+  // Exakter Treffer am dokumentierten Typenschildpunkt
+  if (Math.abs(sourceTempC - NOMINAL_SOURCE_TEMP) < 0.1 && Math.abs(flowTempC - NOMINAL_FLOW_TEMP) < 0.1) {
+    return NOMINAL_COP;
+  }
+
+  // Thermodynamische Carnot-Güteabschätzung für Temperaturabweichungen
+  const tHotK = flowTempC + 273.15;
+  const tColdK = sourceTempC + 273.15;
+  const carnotDeltaT = Math.max(5, tHotK - tColdK);
+  const carnotCop = tHotK / carnotDeltaT;
+
+  const nominalHotK = NOMINAL_FLOW_TEMP + 273.15;
+  const nominalColdK = NOMINAL_SOURCE_TEMP + 273.15;
+  const nominalCarnotCop = nominalHotK / (nominalHotK - nominalColdK);
+
+  // Gütegrad eta_c basierend auf dem dokumentierten Referenzpunkt (~0.626)
+  const etaCarnot = NOMINAL_COP / nominalCarnotCop;
+
+  // Bei CO2 (R744 transkritisch) beeinflusst die Rücklauftemperatur die Gaskühlung maßgeblich:
+  // Rücklauftemperaturen über 30°C vermindern den COP.
+  const returnPenalty = Math.max(0, bufferBottomTempC - 30.0) * 0.025;
+
+  const estimatedCop = (carnotCop * etaCarnot) - returnPenalty;
+  return Math.round(Math.min(4.8, Math.max(1.8, estimatedCop)) * 100) / 100;
 }
 
 export function calculateSystemMetrics(
@@ -64,7 +88,7 @@ export function calculateSystemMetrics(
       const currentCop =
         wp.manualCop ?? calculateDynamicCop(wp.sourceTempC, wp.flowTempC, buffer.bottomTempC);
       totalWpThermalPowerKw += wp.thermalPowerKw;
-      const elPower = Math.round((wp.thermalPowerKw / currentCop) * 10) / 10;
+      const elPower = Math.round((wp.thermalPowerKw / currentCop) * 100) / 100;
       totalWpElectricalPowerKw += elPower;
     }
   });
@@ -73,6 +97,11 @@ export function calculateSystemMetrics(
     totalWpElectricalPowerKw > 0
       ? Math.round((totalWpThermalPowerKw / totalWpElectricalPowerKw) * 100) / 100
       : 0;
+
+  const isQahvDocumentedPoint =
+    heatPumps.some((wp) => wp.enabled && Math.abs(wp.sourceTempC - 7.0) < 0.1 && Math.abs(wp.flowTempC - 65.0) < 0.1);
+  const qahvCopReferenceText =
+    'Dokumentierter Typenschild-Referenzpunkt Mitsubishi QAHV-N560YA-HPB: A7/W9→65°C, 40,0 kW th / 10,97 kW el = COP 3,65.';
 
   const centralHeatingPowerKw = centralHeating.enabled ? centralHeating.powerKw : 0;
   const totalHeatGenerationPowerKw = totalWpThermalPowerKw + centralHeatingPowerKw;
@@ -107,13 +136,29 @@ export function calculateSystemMetrics(
   const coldWaterFlowLmin = Math.round(Math.max(0, peakMixedWaterFlowLmin - peakHotWaterFlowLmin) * 10) / 10;
 
   // Benötigte Spitzen-Wärmeleistung am FWS-Wärmeüberträger (kW)
-  // Q = V_ww (l/min) * 60 (min/h) * c (kWh/(l*K)) * DeltaT
   const peakThermalDemandKw =
     Math.round(peakHotWaterFlowLmin * 60 * SPECIFIC_HEAT_WATER_KWH_PER_L_K * deltaTWarmCold * 10) / 10;
 
   // 3. Frischwasserstationen (FWS) Kapazität & Auslastung
+  // Typenschild-Nennleistung: 130 kW bei 70/25 °C Primär -> 10/60 °C Sekundär (37,3 l/min je FWS = 149,2 l/min gesamt)
   const effectiveFwsCount = Math.min(fws.count, Math.max(0, fws.activeStations));
-  const fwsTotalCapacityLmin = effectiveFwsCount * fws.ratedCapacityPerStationLmin;
+  const fwsNominalCapacityLmin = Math.round(effectiveFwsCount * fws.ratedCapacityPerStationLmin * 10) / 10;
+  const fwsTotalCapacityLmin = fwsNominalCapacityLmin;
+
+  let fwsOperatingRating: 'NOMINAL_CONFIRMED_70C' | 'UNPROVEN_AT_65C_PRIMARY' | 'CRITICAL_UNDER_65C' = 'NOMINAL_CONFIRMED_70C';
+  let fwsOperatingNotice = '';
+
+  if (fws.primaryFlowTempC >= 70.0) {
+    fwsOperatingRating = 'NOMINAL_CONFIRMED_70C';
+    fwsOperatingNotice = `Bestätigter Nennbetriebspunkt (Primär ${fws.primaryFlowTempC}°C ≥ 70°C, 10→60°C TWW): 130 kW bzw. 37,3 l/min je FWS (${fwsNominalCapacityLmin} l/min Kaskade).`;
+  } else if (fws.primaryFlowTempC >= 64.0) {
+    fwsOperatingRating = 'UNPROVEN_AT_65C_PRIMARY';
+    fwsOperatingNotice = `Prüfpunkt: Primär-Vorlauf ${fws.primaryFlowTempC}°C liegt unter dem Nennpunkt von 70°C. Die verfügbare Dauerleistung bei 65°C Primär-VL ist herstellerseitig noch nicht nachgewiesen (Nachrechnung/Prüfung erforderlich).`;
+  } else {
+    fwsOperatingRating = 'CRITICAL_UNDER_65C';
+    fwsOperatingNotice = `Kritischer Vorlauf: Primär ${fws.primaryFlowTempC}°C reicht kaum aus, um 60°C Warmwasser normgerecht zu garantieren (Pinch-Point-Unterschreitung möglich).`;
+  }
+
   const fwsCapacityUtilizationPercent =
     fwsTotalCapacityLmin > 0
       ? Math.round((peakHotWaterFlowLmin / fwsTotalCapacityLmin) * 100)
@@ -122,7 +167,6 @@ export function calculateSystemMetrics(
   const isHydraulicOverloaded = !fwsSufficient && peakHotWaterFlowLmin > 0;
 
   // Erforderlicher Primär-Heizwasservolumenstrom (l/h)
-  // Q = m_prim * c * (T_prim_VL - T_prim_RL)
   const primaryDeltaT = Math.max(2, fws.primaryFlowTempC - fws.primaryReturnTempC);
   const requiredPrimaryFlowLh =
     peakThermalDemandKw > 0
@@ -130,8 +174,6 @@ export function calculateSystemMetrics(
       : 0;
 
   // Reale Hydraulik: Primärrücklauf-Einspeisung über 3-Wege-Umschaltventil in Puffer 3
-  // Wenn Rücklauf < 30°C: ganz unten (optimale Schichtung & WP-Eintritt)
-  // Wenn Rücklauf >= 30°C: mittig in Puffer 3 (verhindert Zerstörung der Fußzonen-Auskühlung)
   const fwsReturnValvePosition: 'BOTTOM_STRAT' | 'MID_STRAT' =
     fws.primaryReturnTempC < 30.0 ? 'BOTTOM_STRAT' : 'MID_STRAT';
   const fwsReturnValveReason =
@@ -139,43 +181,82 @@ export function calculateSystemMetrics(
       ? `FWS-Rücklauf (${fws.primaryReturnTempC}°C < 30°C): Ventil schaltet in Tiefzone Puffer 3 (Ideal für WP-Eintritt).`
       : `FWS-Rücklauf (${fws.primaryReturnTempC}°C ≥ 30°C): Ventil schaltet in Mittelzone Puffer 3 (Schutz vor Schichtungsstörung).`;
 
-  // 4. Speicher-Energetik (3 x 2000L = 6000L) mit Schichtungsmodell (F2)
+  // 4. Speicher-Energetik (3 x 2000L = 6000L) - 3 Stufen
   const totalStorageVolumeLiters = buffer.count * buffer.volumePerTankLiters;
   
-  // Mindest-Vorlauftemperatur für FWS unter Berücksichtigung der Grädigkeit (Pinch Point):
-  // Um 60°C TWW bereitzustellen, muss der Puffer-Kopf mindestens 60°C + 4K = 64°C warm sein!
-  const minRequiredBufferHeadTempC = fws.hotWaterOutletTempC + FWS_HEAT_EXCHANGER_MIN_PINCH_POINT_K;
-  
-  // Physikalisches Veto zur thermischen Versorgbarkeit (F1 & F2)
+  let usableHotVolumeLiters = 0;
+  let totalStoredEnergyKwh = 0;
+  let storageCalculationModeLabel = '';
+  let storageCalculationExplanation = '';
+
+  const mode = buffer.storageCalcMode || 'manual_fraction';
+
+  if (mode === 'fully_mixed') {
+    // Stufe 1: Vollständig durchmischter Speicher (konservative physikalische Untergrenze)
+    const avgTemp = (buffer.topTempC + buffer.bottomTempC) / 2;
+    const deltaT = Math.max(0, avgTemp - buffer.minUsableTempC);
+    usableHotVolumeLiters = deltaT > 0 ? totalStorageVolumeLiters : 0;
+    totalStoredEnergyKwh = Math.round(usableHotVolumeLiters * SPECIFIC_HEAT_WATER_KWH_PER_L_K * deltaT * 10) / 10;
+    storageCalculationModeLabel = 'Stufe 1: Vollständig durchmischter Speicher';
+    storageCalculationExplanation = `Mitteltemperatur T_avg = ${avgTemp.toFixed(1)}°C über 6.000 L. Nutzbare Temperaturdifferenz über Mindesttemperatur (${buffer.minUsableTempC}°C): ${deltaT.toFixed(1)} K. Konservative Untergrenze ohne Schichtungseffekt.`;
+  } else if (mode === 'multi_sensor') {
+    // Stufe 3: Messbetrieb mit 3 Fühlerzonen (je 2.000 L)
+    const deltaTop = Math.max(0, buffer.sensorTopTempC - buffer.minUsableTempC);
+    const energyTop = 2000 * SPECIFIC_HEAT_WATER_KWH_PER_L_K * deltaTop;
+
+    const deltaMid = Math.max(0, buffer.sensorMidTempC - buffer.minUsableTempC);
+    const energyMid = 2000 * SPECIFIC_HEAT_WATER_KWH_PER_L_K * deltaMid;
+
+    const deltaBottom = Math.max(0, buffer.sensorBottomTempC - buffer.minUsableTempC);
+    const energyBottom = 2000 * SPECIFIC_HEAT_WATER_KWH_PER_L_K * deltaBottom;
+
+    totalStoredEnergyKwh = Math.round((energyTop + energyMid + energyBottom) * 10) / 10;
+    usableHotVolumeLiters =
+      (deltaTop > 0 ? 2000 : 0) +
+      (deltaMid > 0 ? 2000 : 0) +
+      (deltaBottom > 0 ? 2000 : 0);
+    storageCalculationModeLabel = 'Stufe 3: Fühlerbasierte 3-Zonen-Messung';
+    storageCalculationExplanation = `Berechnung aus 3 Fühlerwerten (Oben: ${buffer.sensorTopTempC}°C, Mitte: ${buffer.sensorMidTempC}°C, Unten: ${buffer.sensorBottomTempC}°C). Reale Messwerte statt pauschaler Annahme.`;
+  } else {
+    // Stufe 2: Praxis - Eingegebener nutzbarer Heißwasseranteil (manual_fraction)
+    const fraction = Math.max(0.1, Math.min(1.0, buffer.hotLayerFraction ?? 0.6));
+    usableHotVolumeLiters = Math.round(totalStorageVolumeLiters * fraction);
+    const deltaT = Math.max(0, buffer.topTempC - buffer.minUsableTempC);
+    totalStoredEnergyKwh = Math.round(usableHotVolumeLiters * SPECIFIC_HEAT_WATER_KWH_PER_L_K * deltaT * 10) / 10;
+    storageCalculationModeLabel = 'Stufe 2: Eingegebener Heißwasseranteil (Simulationsannahme)';
+    storageCalculationExplanation = `${Math.round(fraction * 100)}% Heißwasserschicht (${usableHotVolumeLiters.toLocaleString('de-DE')} L) bei T_oben = ${buffer.topTempC}°C oberhalb Mindestnutztemperatur ${buffer.minUsableTempC}°C.`;
+  }
+
+  // 5. Pinch-Point & Versorgbarkeit (ohne starres 4-K-Veto)
   let isThermalSupplyFeasible = true;
+  let thermalMarginStatus: 'ADEQUATE' | 'CRITICAL_MARGIN' | 'INSUFFICIENT' = 'ADEQUATE';
+  let thermalMarginNotice = '';
   let supplyInfeasibilityReason = '';
 
-  if (buffer.topTempC < minRequiredBufferHeadTempC) {
+  const tempMargin = buffer.topTempC - fws.hotWaterOutletTempC;
+
+  if (buffer.topTempC < fws.hotWaterOutletTempC) {
     isThermalSupplyFeasible = false;
-    supplyInfeasibilityReason = `Puffertemperatur oben (${buffer.topTempC}°C) unterschreitet die physikalisch erforderliche Mindest-Vorlauftemperatur von ${minRequiredBufferHeadTempC.toFixed(1)}°C (${fws.hotWaterOutletTempC}°C TWW + ${FWS_HEAT_EXCHANGER_MIN_PINCH_POINT_K} K Grädigkeit des FWS-Wärmetauschers). Warmwasser-Solltemperatur kann thermodynamisch nicht erreicht werden!`;
-  } else if (effectiveFwsCount === 0 && peakHotWaterFlowLmin > 0) {
+    thermalMarginStatus = 'INSUFFICIENT';
+    thermalMarginNotice = `Untertemperatur: Speicherkopf (${buffer.topTempC}°C) liegt unter der geforderten TWW-Solltemperatur (${fws.hotWaterOutletTempC}°C).`;
+    supplyInfeasibilityReason = `Puffertemperatur oben (${buffer.topTempC}°C) ist geringer als geforderte Warmwassertemperatur (${fws.hotWaterOutletTempC}°C).`;
+  } else if (tempMargin < 4.0) {
+    isThermalSupplyFeasible = true;
+    thermalMarginStatus = 'CRITICAL_MARGIN';
+    thermalMarginNotice = `Kritischer Betriebsbereich: Grädigkeitsabstand Primär-VL zu TWW beträgt nur ${tempMargin.toFixed(1)} K (< 4 K). Reale TWW-Temperatur hängt von Primärvolumenstrom ab und muss herstellerseitig nachgewiesen werden.`;
+  } else {
+    isThermalSupplyFeasible = true;
+    thermalMarginStatus = 'ADEQUATE';
+    thermalMarginNotice = `Ausreichender Grädigkeitsabstand von ${tempMargin.toFixed(1)} K (Puffer ${buffer.topTempC}°C → TWW ${fws.hotWaterOutletTempC}°C).`;
+  }
+
+  if (effectiveFwsCount === 0 && peakHotWaterFlowLmin > 0) {
     isThermalSupplyFeasible = false;
     supplyInfeasibilityReason = 'Keine Frischwasserstation aktiv! Warmwasserversorgung unterbrochen.';
   } else if (isHydraulicOverloaded) {
-    isThermalSupplyFeasible = false;
-    supplyInfeasibilityReason = `Spitzen-Warmwasserbedarf (${peakHotWaterFlowLmin} l/min) übersteigt die hydraulische Maximalleistung der ${effectiveFwsCount} aktiven FWS (${fwsTotalCapacityLmin.toFixed(1)} l/min) um ${peakHotWaterFlowLmin - fwsTotalCapacityLmin} l/min. Zapfdruck- und Temperaturabfall an den Duschköpfen!`;
+    thermalMarginStatus = 'CRITICAL_MARGIN';
+    supplyInfeasibilityReason = `Spitzen-Warmwasserbedarf (${peakHotWaterFlowLmin} l/min) übersteigt die Nennleistung der ${effectiveFwsCount} aktiven FWS (${fwsTotalCapacityLmin.toFixed(1)} l/min).`;
   }
-
-  // Nutzbare Energie im Schichtspeicher:
-  // Es darf nur das heiße Nutzvolumen oberhalb der Mindestnutztemperatur (inkl. Grädigkeit) bilanziert werden
-  const effectiveMinTemp = Math.max(buffer.minUsableTempC, minRequiredBufferHeadTempC);
-  const hotLayerFraction = buffer.hotLayerFraction !== undefined
-    ? Math.max(0, Math.min(1, buffer.hotLayerFraction))
-    : Math.max(0, Math.min(1, (buffer.topTempC - buffer.bottomTempC) > 0 ? (buffer.topTempC - effectiveMinTemp) / Math.max(1, buffer.topTempC - buffer.bottomTempC) : 0.5));
-
-  // Nutzbares Heißwasservolumen (Liter)
-  const usableHotVolumeLiters = totalStorageVolumeLiters * hotLayerFraction;
-  const usableDischargeDeltaT = Math.max(0, buffer.topTempC - effectiveMinTemp);
-
-  const totalStoredEnergyKwh =
-    isThermalSupplyFeasible
-      ? Math.round(usableHotVolumeLiters * SPECIFIC_HEAT_WATER_KWH_PER_L_K * usableDischargeDeltaT * 10) / 10
-      : 0;
 
   // Gesamter thermischer Energieinhalt bezogen auf Kaltwasser (10°C)
   const fullDeltaT = Math.max(0, buffer.topTempC - fws.coldWaterInletTempC);
@@ -301,15 +382,6 @@ export function calculateSystemMetrics(
   const fullStorageRechargeHoursWp = Math.round((storageReheatEnergyNeededKwh / wpPower) * 10) / 10;
   const fullStorageRechargeHoursWt = Math.round((storageReheatEnergyNeededKwh / wtPower) * 10) / 10;
   const fullStorageRechargeHoursCombined = Math.round((storageReheatEnergyNeededKwh / combinedPower) * 10) / 10;
-
-  // 8b. Trinkwasserzähler-Bilanzierung
-  let waterMeterDeltaM3: number | undefined;
-  let waterMeterThermalEnergyKwh: number | undefined;
-  if (fws.waterMeterReadingM3 !== undefined && fws.waterMeterLastReadingM3 !== undefined) {
-    waterMeterDeltaM3 = Math.max(0, Math.round((fws.waterMeterReadingM3 - fws.waterMeterLastReadingM3) * 1000) / 1000);
-    // Gemessene thermische Energie = V_m3 * 1000 l/m3 * c * DeltaT
-    waterMeterThermalEnergyKwh = Math.round(waterMeterDeltaM3 * 1000 * SPECIFIC_HEAT_WATER_KWH_PER_L_K * deltaTWarmCold * 10) / 10;
-  }
 
   // 9. Normen- und Hygiene-Prüfungen
   const w551OutletStatus =
@@ -510,9 +582,22 @@ export function calculateSystemMetrics(
     };
   });
 
+  const waterMeterDeltaM3 =
+    fws.waterMeterReadingM3 !== undefined && fws.waterMeterLastReadingM3 !== undefined
+      ? Math.max(0, Math.round((fws.waterMeterReadingM3 - fws.waterMeterLastReadingM3) * 100) / 100)
+      : undefined;
+
+  const waterMeterThermalEnergyKwh =
+    waterMeterDeltaM3 !== undefined
+      ? Math.round(waterMeterDeltaM3 * 1000 * SPECIFIC_HEAT_WATER_KWH_PER_L_K * deltaTWarmCold * 10) / 10
+      : undefined;
+
+  const waterMeterEnergyNote =
+    'Rechnerische Wärmeenergie aus gemessenem Trinkwasservolumen (Annahme Erwärmung 10 → 60 °C, Delta T = 50 K). Kein geeichter Wärmemengenzähler (WMZ).';
+
   const copAnalysis: CopAnalysis = {
     systemCop,
-    nominalCop: 2.85,
+    nominalCop: 3.65, // Mitsubishi QAHV Referenzwert A7/W9->65°C
     avgSourceTempC,
     avgFlowTempC,
     bufferBottomTempC,
@@ -547,19 +632,29 @@ export function calculateSystemMetrics(
     peakThermalDemandKw: Math.round(peakThermalDemandKw * 10) / 10,
     coldWaterFlowLmin,
     fwsTotalCapacityLmin: Math.round(fwsTotalCapacityLmin * 10) / 10,
+    fwsNominalCapacityLmin,
     fwsCapacityUtilizationPercent,
     fwsSufficient,
+    fwsOperatingRating,
+    fwsOperatingNotice,
     requiredPrimaryFlowLh: Math.round(requiredPrimaryFlowLh),
     autonomyStorageOnlyMinutes,
     autonomyWithGenerationMinutes,
     continuousFlowCoveragePercent,
     isThermalSupplyFeasible,
+    thermalMarginStatus,
+    thermalMarginNotice,
     supplyInfeasibilityReason,
     isHydraulicOverloaded,
     fwsReturnValvePosition,
     fwsReturnValveReason,
+    storageCalculationModeLabel,
+    storageCalculationExplanation,
     waterMeterDeltaM3,
     waterMeterThermalEnergyKwh,
+    waterMeterEnergyNote,
+    isQahvDocumentedPoint,
+    qahvCopReferenceText,
     netPowerBalanceKw,
     operatingStateKey,
     operatingStateTitle,
@@ -587,28 +682,28 @@ export function calculateSystemMetrics(
 export const DEFAULT_HEAT_PUMPS: HeatPumpConfig[] = [
   {
     id: 'wp-1',
-    name: 'Wärmepumpe 1 (Grundlast)',
+    name: 'Mitsubishi QAHV-N560YA-HPB (WP 1 - Grundlast)',
     enabled: true,
-    thermalPowerKw: 40.0, // Reale Geräteleistung nach Typenschild (F3: 3x 40 kW = 120 kW)
-    electricalPowerKw: 14.0, // Bei W7 / W65 (COP ~2.85)
+    thermalPowerKw: 40.0, // Typenschild A7/W9->65: 40.0 kW thermisch
+    electricalPowerKw: 10.97, // Typenschild: 10.97 kW elektrisch (COP 3.65)
     sourceTempC: 7.0,
     flowTempC: 65.0,
   },
   {
     id: 'wp-2',
-    name: 'Wärmepumpe 2 (Mittellast)',
+    name: 'Mitsubishi QAHV-N560YA-HPB (WP 2 - Mittellast)',
     enabled: true,
     thermalPowerKw: 40.0,
-    electricalPowerKw: 14.0,
+    electricalPowerKw: 10.97,
     sourceTempC: 7.0,
     flowTempC: 65.0,
   },
   {
     id: 'wp-3',
-    name: 'Wärmepumpe 3 (Spitzenlast)',
+    name: 'Mitsubishi QAHV-N560YA-HPB (WP 3 - Spitzenlast)',
     enabled: true,
     thermalPowerKw: 40.0,
-    electricalPowerKw: 14.0,
+    electricalPowerKw: 10.97,
     sourceTempC: 7.0,
     flowTempC: 65.0,
   },
@@ -617,8 +712,10 @@ export const DEFAULT_HEAT_PUMPS: HeatPumpConfig[] = [
 export const DEFAULT_CENTRAL_HEATING: CentralHeatingConfig = {
   enabled: true,
   powerKw: 136.0, // 136 kW Plattenwärmetauscher zur alternativen oder zusätzlichen Pufferladung
-  flowTempC: 75.0,
-  returnTempC: 50.0,
+  flowTempC: 70.0, // Planwert 70°C (nicht 75°C)
+  returnTempC: 55.0, // Planwert 55°C (nicht 50°C)
+  flowRateM3h: 7.8, // Planwert 7,8 m³/h
+  nominalPipe: 'DN40', // Planwert DN40
 };
 
 export const DEFAULT_BUFFER_STORAGE: BufferStorageConfig = {
@@ -628,23 +725,28 @@ export const DEFAULT_BUFFER_STORAGE: BufferStorageConfig = {
   topTempC: 65.0,
   bottomTempC: 30.0,
   targetChargingTempC: 65.0,
-  minUsableTempC: 60.0, // F1/F2: Mindest-Nutztemperatur (FWS benötigt 60°C TWW + Grädigkeit)
+  minUsableTempC: 60.0, // Mindest-Nutztemperatur
   ambientTempC: 18.0,
   insulationLossKwh24h: 7.5,
-  hotLayerFraction: 0.6, // 60% geschichtetes Heißwasservolumen
+  storageCalcMode: 'manual_fraction', // Stufe 1: fully_mixed | Stufe 2: manual_fraction | Stufe 3: multi_sensor
+  hotLayerFraction: 0.6, // Stufe 2: 60% Heißwasser-Nutzanteil (Simulationsannahme)
+  sensorTopTempC: 65.0, // Stufe 3: Puffer oben
+  sensorMidTempC: 48.0, // Stufe 3: Puffer mitte
+  sensorBottomTempC: 30.0, // Stufe 3: Puffer unten
 };
 
 export const DEFAULT_FWS: FreshWaterStationConfig = {
   count: 4,
-  ratedCapacityPerStationLmin: 37.3, // F3: Reale Nennleistung 130 kW bei 10->60°C (37,3 l/min je FWS = 149 l/min gesamt)
+  ratedCapacityPerStationLmin: 37.3, // Nennleistung 130 kW bei 70/25 -> 10/60°C (37,3 l/min je FWS = 149,2 l/min gesamt)
   ratedPowerPerStationKw: 130.0,
-  primaryFlowTempC: 65.0,
+  primaryFlowTempC: 65.0, // Prüfpunkt: 65°C Primär-VL (Leistung noch nachzuweisen)
   primaryReturnTempC: 28.0,
   coldWaterInletTempC: 10.0,
   hotWaterOutletTempC: 60.0, // Norm 60°C nach DVGW W 551
   activeStations: 4,
-  waterMeterReadingM3: 1428.65, // Trinkwasserzähler Zulauf zu FWS
-  waterMeterLastReadingM3: 1420.20, // Letzter Ablesestand (Delta = 8,45 m³)
+  waterMeterReadingM3: undefined, // Standardmäßig leer für reale Vor-Ort-Ablesung
+  waterMeterLastReadingM3: undefined,
+  waterMeterIsSample: false,
 };
 
 export const DEFAULT_SANITARY: SanitaryConsumerConfig = {
@@ -678,10 +780,10 @@ export const DEFAULT_CIRCULATION: CirculationConfig = {
 export const DEFAULT_INSPECTION: TechnicianInspection = {
   inspectorName: '',
   companyName: '',
-  facilityName: 'Sportzentrum & Duschkomplex Nord (Großanlage)',
-  facilityAddress: 'Olympiastraße 14, 80809 München',
+  facilityName: '', // Standardmäßig leer für echte Liegenschaft
+  facilityAddress: '',
   inspectionDate: new Date().toISOString().slice(0, 10),
-  orderNumber: 'PR-2026-TWW-01',
+  orderNumber: '',
   measuredSystemPressureBar: undefined, // Vom Monteur vor Ort einzutragen
   measuredWpFlowTempC: undefined,
   measuredWpReturnTempC: undefined,
@@ -689,13 +791,44 @@ export const DEFAULT_INSPECTION: TechnicianInspection = {
   measuredBufferBottomTempC: undefined,
   measuredFwsOutletTempC: undefined,
   measuredCircReturnTempC: undefined,
-  stagnationFlushingConfirmed: false, // F5: Nicht vorbelegt! Monteur muss vor Ort bestätigen
-  safetyValvesChecked: false, // F5: Nicht vorbelegt!
-  expansionVesselsChecked: false, // F5: Nicht vorbelegt!
-  thermalDisinfectionTested: false, // F5: Nicht vorbelegt!
-  circulationPumpOperational: false, // F5: Nicht vorbelegt!
-  legionellaFilterInstalled: false, // F5: Nicht vorbelegt!
+  stagnationFlushingConfirmed: false,
+  safetyValvesChecked: false,
+  expansionVesselsChecked: false,
+  thermalDisinfectionTested: false,
+  circulationPumpOperational: false,
+  legionellaFilterInstalled: false,
   recommendations: [],
   notes: '',
-  statusApproved: false, // F5: Standardmäßig nicht freigegeben ohne Prüfung
+  statusApproved: false, // Standardmäßig nicht freigegeben ohne Prüfung
+};
+
+/**
+ * Muster-Inspektionsdaten für Präsentations- und Demozwecke (klar gekennzeichnet)
+ */
+export const SAMPLE_INSPECTION: TechnicianInspection = {
+  inspectorName: 'Max Mustermann (Servicetechniker TGA)',
+  companyName: 'Muster TGA-Wartung GmbH & Co. KG',
+  facilityName: 'Sportzentrum & Duschkomplex Nord (Großanlage - DEMO)',
+  facilityAddress: 'Musterstraße 14, 80000 München',
+  inspectionDate: new Date().toISOString().slice(0, 10),
+  orderNumber: 'DEMO-2026-TWW-01',
+  measuredSystemPressureBar: 3.0,
+  measuredWpFlowTempC: 65.0,
+  measuredWpReturnTempC: 30.0,
+  measuredBufferTopTempC: 65.0,
+  measuredBufferBottomTempC: 30.0,
+  measuredFwsOutletTempC: 60.0,
+  measuredCircReturnTempC: 56.0,
+  stagnationFlushingConfirmed: true,
+  safetyValvesChecked: true,
+  expansionVesselsChecked: true,
+  thermalDisinfectionTested: true,
+  circulationPumpOperational: true,
+  legionellaFilterInstalled: false,
+  recommendations: [
+    'Regelmäßige mikrobiologische Beprobung nach TrinkwV alle 12 Monate durchführen.',
+    'Spreizung der Frischwasserstationen (Delta T Primär/Sekundär) halbjährlich prüfen.',
+  ],
+  notes: 'Musterprotokoll zur Veranschaulichung der PDF-Ausgabe.',
+  statusApproved: true,
 };

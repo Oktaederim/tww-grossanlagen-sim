@@ -66,23 +66,23 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
 
-            {/* Plant Tags */}
+            {/* Plant Tags with Status Classification */}
             <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-200">
-                <Zap className="w-3.5 h-3.5 text-amber-400" />
-                3x Wärmepumpen (135 kW)
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-800 border border-emerald-600/40 text-emerald-300" title="Dokumentierter Typenschild-Bestand">
+                <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                3x Mitsubishi QAHV (120 kW th / COP 3,65)
               </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-200">
-                <Flame className="w-3.5 h-3.5 text-orange-400" />
-                136 kW Wärmetauscher (Zusatz/Alternativ)
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-800 border border-blue-600/40 text-blue-300" title="Planungsvorgabe Wärmetauscher">
+                <Flame className="w-3.5 h-3.5 text-blue-400" />
+                136 kW WT (Plan 70/55 °C, DN40)
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-200">
                 <Activity className="w-3.5 h-3.5 text-cyan-400" />
                 3x 2.000 L Pufferspeicher (6.000 L)
               </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-200">
-                <Droplets className="w-3.5 h-3.5 text-blue-400" />
-                4x Frischwasserstationen (Kaskade)
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-800 border border-amber-600/40 text-amber-300" title="Typenschild 70/25°C, Prüfpunkt 65°C Primär">
+                <Droplets className="w-3.5 h-3.5 text-amber-400" />
+                4x Danfoss FWS 130 kW (Nenn 149 l/min)
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-200">
                 10 Duschbereiche (50 Duschen + 50 WT)

@@ -280,7 +280,7 @@ export const KeyMetricsGrid: React.FC<KeyMetricsGridProps> = ({
           <div>
             <div className="flex items-center justify-between text-slate-500 mb-1">
               <span className="text-xs font-semibold uppercase tracking-wider">
-                Nutzenergie
+                Nutzbare Energie
               </span>
               <Database className="w-4 h-4 text-blue-500" />
             </div>
@@ -288,12 +288,21 @@ export const KeyMetricsGrid: React.FC<KeyMetricsGridProps> = ({
               {metrics.totalStoredEnergyKwh}{' '}
               <span className="text-sm font-medium text-slate-500">kWh</span>
             </div>
+            <div className="text-[10px] text-cyan-800 font-medium truncate mt-0.5" title={metrics.storageCalculationModeLabel}>
+              {metrics.storageCalculationModeLabel}
+            </div>
           </div>
-          <div className="mt-1 flex items-center justify-between text-[11px] text-slate-600">
-            <span>6.000 L Speicher</span>
-            <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-              {metrics.storageStateOfChargePercent}% voll
-            </span>
+          <div className="mt-2 pt-1.5 border-t border-slate-100 space-y-0.5 text-[11px] text-slate-600">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">Gesamtinhalt über RL:</span>
+              <span className="font-mono font-semibold text-slate-800">{metrics.storedEnergyFullDeltaKwh} kWh</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>6.000 L Speicher</span>
+              <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded text-[10px]">
+                {metrics.storageStateOfChargePercent}% voll
+              </span>
+            </div>
           </div>
         </div>
 
@@ -370,17 +379,28 @@ export const KeyMetricsGrid: React.FC<KeyMetricsGridProps> = ({
             >
               {metrics.fwsCapacityUtilizationPercent}%
             </div>
+            <div className="text-[10px] text-slate-500 truncate mt-0.5">
+              Nennkapazität: {metrics.fwsTotalCapacityLmin} l/min (70/25°C)
+            </div>
           </div>
-          <div className="mt-1 flex items-center justify-between text-[11px] text-slate-600">
-            <span>Max: {metrics.fwsTotalCapacityLmin} l/min</span>
+          <div className="mt-1 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600">
+            <span className="text-[10px] font-medium text-slate-600 truncate mr-1" title={metrics.fwsOperatingRating}>
+              {metrics.fwsOperatingRating}
+            </span>
             <span
-              className={`font-semibold px-1.5 py-0.5 rounded ${
-                metrics.fwsSufficient
-                  ? 'text-emerald-700 bg-emerald-50'
-                  : 'text-rose-700 bg-rose-50'
+              className={`font-semibold px-1.5 py-0.5 rounded text-[10px] shrink-0 ${
+                metrics.thermalMarginStatus === 'CRITICAL'
+                  ? 'text-rose-700 bg-rose-50'
+                  : metrics.thermalMarginStatus === 'TIGHT'
+                  ? 'text-amber-700 bg-amber-50'
+                  : 'text-emerald-700 bg-emerald-50'
               }`}
             >
-              {metrics.fwsSufficient ? 'Ausreichend' : 'Überlast!'}
+              {metrics.thermalMarginStatus === 'CRITICAL'
+                ? 'Pinch < 3 K'
+                : metrics.thermalMarginStatus === 'TIGHT'
+                ? 'Pinch 5 K eng'
+                : 'Pinch sicher'}
             </span>
           </div>
         </div>

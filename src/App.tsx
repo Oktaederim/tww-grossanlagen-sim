@@ -43,19 +43,6 @@ export default function App() {
   const [inspection, setInspection] = useState<TechnicianInspection>({
     ...DEFAULT_INSPECTION,
     inspectionDate: new Date().toISOString().split('T')[0],
-    measuredSystemPressureBar: 3.0,
-    measuredWpFlowTempC: 65.0,
-    measuredWpReturnTempC: 30.0,
-    measuredBufferTopTempC: 65.0,
-    measuredBufferBottomTempC: 30.0,
-    measuredFwsOutletTempC: 60.0,
-    measuredCircReturnTempC: 56.0,
-    recommendations: [
-      'Regelmäßige Wartung der Trinkwasser-Filter alle 6 Monate',
-      'Hydraulischen Abgleich der 10 Duschstränge bei jährlicher Begehung kontrollieren',
-      'Thermische Desinfektion quartalsweise im Gebäudeleitsystem protokollieren',
-    ],
-    statusApproved: true,
   });
 
   // Calculate live engineering metrics
