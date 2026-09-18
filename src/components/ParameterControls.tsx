@@ -145,7 +145,7 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
           }`}
         >
           <Droplets className="w-3.5 h-3.5 text-teal-500" />
-          <span>4x FWS Kaskade ({metrics.fwsCapacityUtilizationPercent}%)</span>
+          <span>4x FWS Kaskade ({metrics.fwsCapacityUtilizationPercent !== undefined ? `${metrics.fwsCapacityUtilizationPercent}%` : 'Prüfpunkt'})</span>
         </button>
 
         <button
@@ -1189,8 +1189,16 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
               </div>
               <div className="text-right text-xs">
                 <span className="text-slate-500">Auslastung: </span>
-                <strong className={`font-mono text-sm ${metrics.fwsCapacityUtilizationPercent > 100 ? 'text-rose-600' : 'text-emerald-700'}`}>
-                  {metrics.fwsCapacityUtilizationPercent} %
+                <strong className={`font-mono text-sm ${
+                  metrics.fwsCapacityUtilizationPercent === undefined
+                    ? 'text-slate-600'
+                    : metrics.fwsCapacityUtilizationPercent > 100
+                    ? 'text-rose-600'
+                    : 'text-emerald-700'
+                }`}>
+                  {metrics.fwsCapacityUtilizationPercent !== undefined
+                    ? `${metrics.fwsCapacityUtilizationPercent} %`
+                    : 'Unbelegt (Modell-/Prüfpunkt)'}
                 </strong>
               </div>
             </div>
@@ -1213,7 +1221,15 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                 </p>
                 <div className="mt-1 pt-1 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
                   <span>{metrics.fwsOperatingNotice}</span>
-                  <span className="font-semibold">Auslegungs-Klassifizierung: {metrics.fwsOperatingRating}</span>
+                  <span className="font-semibold">
+                    Klassifizierung: {
+                      metrics.fwsOperatingRating === 'NOMINAL_CONFIRMED_70C'
+                        ? 'Bestätigtes Nennprogramm (70/25→10/60°C)'
+                        : metrics.fwsOperatingRating === 'CRITICAL_UNDER_65C'
+                        ? 'Kritische Untertemperatur (<64°C)'
+                        : 'Modell-/Prüfpunkt (nicht belegt)'
+                    }
+                  </span>
                 </div>
               </div>
             </div>

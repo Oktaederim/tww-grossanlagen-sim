@@ -131,7 +131,7 @@ export function calculateSystemMetrics(
 
   const qahvCopReferenceText = isQahvDocumentedPoint
     ? 'Dokumentierter Typenschild-Referenzpunkt Mitsubishi QAHV-N560YA-HPB: A7/W9→65°C, 40,0 kW th / 10,97 kW el = COP 3,65.'
-    : `Modell-COP auf Basis Carnot-Gütegrad mit Wassereintrittskorrektur (${buffer.bottomTempC}°C Eintritt vs. 9°C Typenschild-Referenz). Außerhalb des dokumentierten Referenzpunktes A7/W9→65°C (COP 3,65) handelt es sich um eine Modellschätzung; für verbindliche Nachweise sind die Hersteller-Leistungsdiagramme heranzuziehen.`;
+    : `Modell-COP (Simulation): Die Steigung von ca. 0,035 COP/K zwischen 9 und 15°C Wassereintritt ist aus den Mitsubishi-Punkten abgeleitet; die Fortsetzung bis ${buffer.bottomTempC}°C stellt eine thermodynamische Modellrechnung dar und ist keine garantierte Herstellerkennlinie.`;
 
   const centralHeatingPowerKw = centralHeating.enabled ? centralHeating.powerKw : 0;
   const totalHeatGenerationPowerKw = totalWpThermalPowerKw + centralHeatingPowerKw;
@@ -171,12 +171,22 @@ export function calculateSystemMetrics(
     Math.round(peakHotWaterFlowLmin * 60 * SPECIFIC_HEAT_WATER_KWH_PER_L_K * deltaTWarmCold * 10) / 10;
 
   // 3. Frischwasserstationen (FWS) Kapazität & Auslastung
-  // Typenschild-Nennleistung: 130 kW bei 70/25 °C Primär -> 10/60 °C Sekundär (37,3 l/min je FWS = 149,2 l/min gesamt)
+  // Vollständiger dokumentierter Hersteller-Nennbetriebspunkt nach Projektzusammenfassung_TWS.docx:
+  // Danfoss TD-FLS 130 kW:
+  // Primär: 70 °C Vorlauf, 25 °C Rücklauf
+  // Sekundär: 10 °C Kaltwasserzulauf, 60 °C Warmwasseraustritt
+  // Nur bei diesem exakten Temperaturprogramm (70/25 -> 10/60 °C) sind 130 kW bzw. 37,3 l/min je FWS belegt.
   const effectiveFwsCount = Math.min(fws.count, Math.max(0, fws.activeStations));
   const fwsNominalCapacityLmin = Math.round(effectiveFwsCount * fws.ratedCapacityPerStationLmin * 10) / 10;
-  const isAtNominalPrimary = fws.primaryFlowTempC >= 70.0;
+  
+  const isDocumentedNominalProgram =
+    Math.abs(fws.primaryFlowTempC - 70.0) <= 0.5 &&
+    Math.abs(fws.primaryReturnTempC - 25.0) <= 2.0 &&
+    Math.abs(fws.coldWaterInletTempC - 10.0) <= 1.0 &&
+    Math.abs(fws.hotWaterOutletTempC - 60.0) <= 0.5;
+
   const fwsTotalCapacityLmin = fwsNominalCapacityLmin;
-  const fwsAvailableCapacityLmin = isAtNominalPrimary ? fwsNominalCapacityLmin : undefined;
+  const fwsAvailableCapacityLmin = isDocumentedNominalProgram ? fwsNominalCapacityLmin : undefined;
 
   let fwsOperatingRating: 'NOMINAL_CONFIRMED_70C' | 'UNPROVEN_AT_65C_PRIMARY' | 'CRITICAL_UNDER_65C' = 'NOMINAL_CONFIRMED_70C';
   let fwsOperatingNotice = '';
@@ -184,46 +194,54 @@ export function calculateSystemMetrics(
   let fwsUtilizationStatusText = '';
   let fwsCapacityUtilizationPercent: number | undefined;
 
-  if (isAtNominalPrimary) {
+  if (isDocumentedNominalProgram) {
     fwsOperatingRating = 'NOMINAL_CONFIRMED_70C';
-    fwsOperatingNotice = `Bestätigter Nennbetriebspunkt (Primär ${fws.primaryFlowTempC}°C ≥ 70°C, 10→60°C TWW): 130 kW bzw. 37,3 l/min je FWS (${fwsNominalCapacityLmin} l/min Kaskade).`;
-    fwsAvailableCapacityText = `${fwsNominalCapacityLmin.toFixed(1)} l/min (dokumentierter Nennpunkt)`;
+    fwsOperatingNotice = `Dokumentiertes Hersteller-Nennprogramm (Danfoss TD-FLS 130 kW: Primär 70/25°C → Sekundär 10/60°C): 130 kW thermisch bzw. 37,3 l/min je Station (${fwsNominalCapacityLmin.toFixed(1)} l/min Kaskade).`;
+    fwsAvailableCapacityText = `${fwsNominalCapacityLmin.toFixed(1)} l/min (dokumentierter Nennpunkt 70/25→10/60°C)`;
     fwsCapacityUtilizationPercent =
       fwsNominalCapacityLmin > 0
         ? Math.round((peakHotWaterFlowLmin / fwsNominalCapacityLmin) * 100)
         : 0;
     fwsUtilizationStatusText = `${fwsCapacityUtilizationPercent}%`;
-  } else if (fws.primaryFlowTempC >= 64.0) {
+  } else if (fws.hotWaterOutletTempC > 60.5) {
+    // Abweichendes Programm: z. B. Thermische Desinfektion (70°C TWW)
     fwsOperatingRating = 'UNPROVEN_AT_65C_PRIMARY';
-    fwsOperatingNotice = `Primär-Vorlauf ${fws.primaryFlowTempC}°C liegt unter dem Nennpunkt von 70°C. Die verfügbare Dauerleistung bei 65°C Primär-VL ist herstellerseitig noch nicht nachgewiesen (Nachrechnung/Prüfung erforderlich).`;
-    fwsAvailableCapacityText = `Unbekannt / nicht nachgewiesen bei ${fws.primaryFlowTempC}°C (Nennwert bei 70°C: ${fwsNominalCapacityLmin.toFixed(1)} l/min)`;
+    fwsOperatingNotice = `Modell-/Prüfpunkt (TWW ${fws.hotWaterOutletTempC}°C, z. B. Thermische Desinfektion): Die Nennleistung von 130 kW bzw. 37,3 l/min je TD-FLS ist ausschließlich für 70/25°C Primär → 10/60°C Sekundär dokumentiert. Bei ${fws.hotWaterOutletTempC}°C TWW ist die tatsächliche Übertragerleistung nicht herstellerbestätigt und darf nicht als bestätigte Nennleistung gewertet werden.`;
+    fwsAvailableCapacityText = `Unbelegt bei ${fws.primaryFlowTempC}/${fws.primaryReturnTempC} → ${fws.coldWaterInletTempC}/${fws.hotWaterOutletTempC}°C (Modell-/Prüfpunkt)`;
     fwsCapacityUtilizationPercent = undefined;
-    fwsUtilizationStatusText = `Auslastung bei ${fws.primaryFlowTempC}°C nicht belastbar berechenbar`;
-  } else {
+    fwsUtilizationStatusText = `Auslastung bei ${fws.hotWaterOutletTempC}°C TWW nicht herstellerbestätigt`;
+  } else if (fws.primaryFlowTempC < 64.0) {
     fwsOperatingRating = 'CRITICAL_UNDER_65C';
-    fwsOperatingNotice = `Kritischer Vorlauf: Primär ${fws.primaryFlowTempC}°C reicht kaum aus, um 60°C Warmwasser normgerecht zu garantieren (Pinch-Point-Unterschreitung möglich).`;
-    fwsAvailableCapacityText = `Nicht ausreichend für 60°C TWW`;
+    fwsOperatingNotice = `Kritischer Vorlauf: Primär ${fws.primaryFlowTempC}°C reicht kaum aus, um ${fws.hotWaterOutletTempC}°C Warmwasser normgerecht zu garantieren (Pinch-Point-Unterschreitung möglich).`;
+    fwsAvailableCapacityText = `Nicht ausreichend für ${fws.hotWaterOutletTempC}°C TWW`;
     fwsCapacityUtilizationPercent = undefined;
     fwsUtilizationStatusText = `Nicht belastbar / Untertemperatur`;
+  } else {
+    // Abweichendes Programm: z. B. 65°C Primär-VL oder abweichende Kaltwasser-/Rücklauftemperaturen
+    fwsOperatingRating = 'UNPROVEN_AT_65C_PRIMARY';
+    fwsOperatingNotice = `Abweichender Modell-/Prüfpunkt (${fws.primaryFlowTempC}/${fws.primaryReturnTempC} → ${fws.coldWaterInletTempC}/${fws.hotWaterOutletTempC}°C): Dokumentiert ist ausschließlich 70/25°C Primär → 10/60°C Sekundär (130 kW / 37,3 l/min). Die reale Leistung bei diesem Betriebspunkt ist herstellerseitig nicht nachgewiesen (Nachrechnung/Prüfung erforderlich).`;
+    fwsAvailableCapacityText = `Unbelegt bei ${fws.primaryFlowTempC}/${fws.primaryReturnTempC} → ${fws.coldWaterInletTempC}/${fws.hotWaterOutletTempC}°C (Nennwert bei 70/25→10/60°C: ${fwsNominalCapacityLmin.toFixed(1)} l/min)`;
+    fwsCapacityUtilizationPercent = undefined;
+    fwsUtilizationStatusText = `Auslastung bei abweichendem Temperaturprogramm nicht belastbar berechenbar`;
   }
 
   // Dreistufige Bewertung der FWS-Kapazität (nachgewiesen ausreichend / nicht bewertbar / nachgewiesen nicht ausreichend):
   let fwsCapacityEvaluation: 'PROVEN_SUFFICIENT' | 'UNPROVEN_AT_OPERATING_POINT' | 'PROVEN_INSUFFICIENT';
   if (effectiveFwsCount === 0 && peakHotWaterFlowLmin > 0) {
     fwsCapacityEvaluation = 'PROVEN_INSUFFICIENT';
-  } else if (fws.primaryFlowTempC < 60.0) {
+  } else if (fws.primaryFlowTempC <= fws.hotWaterOutletTempC) {
     fwsCapacityEvaluation = 'PROVEN_INSUFFICIENT';
-  } else if (isAtNominalPrimary) {
+  } else if (isDocumentedNominalProgram) {
     fwsCapacityEvaluation = peakHotWaterFlowLmin <= fwsNominalCapacityLmin
       ? 'PROVEN_SUFFICIENT'
       : 'PROVEN_INSUFFICIENT';
   } else {
-    // Unterhalb 70 °C (z. B. 65 °C):
-    // Liegt die Zapfung selbst über der 70°C-Nennleistung, ist die Station sicher unzureichend.
+    // Abweichendes Temperaturprogramm (z. B. 65°C Primär oder Desinfektion 70°C):
+    // Liegt die Zapfung selbst über der maximalen 70/25->10/60-Nennleistung, ist die Station sicher unzureichend.
     if (peakHotWaterFlowLmin > fwsNominalCapacityLmin) {
       fwsCapacityEvaluation = 'PROVEN_INSUFFICIENT';
     } else {
-      // Ansonsten rechnerisch unbestimmt, da Hersteller-Kennlinien bei 65°C Primär-VL noch nicht vorliegen.
+      // Ansonsten rechnerisch unbestimmt, da Hersteller-Kennlinien für abweichende Programme nicht vorliegen.
       fwsCapacityEvaluation = 'UNPROVEN_AT_OPERATING_POINT';
     }
   }
@@ -462,7 +480,7 @@ export function calculateSystemMetrics(
   // Dynamisch berechnete Energie für 1 Einzeldusche:
   // E = V_punkt_Misch * t_dusch * c * (T_misch - T_kalt) / 1000
   const singleShowerEnergyKwh = Math.round(
-    (sanitary.showerPanelFlowLmin * sanitary.showerDurationMinutes * SPECIFIC_HEAT_WATER_KWH_PER_L_K * Math.max(1, sanitary.showerMixedTempC - fws.coldWaterInletTempC)) * 1000
+    (sanitary.showerPanelFlowLmin * sanitary.showerDurationMinutes * SPECIFIC_HEAT_WATER_KWH_PER_L_K * Math.max(0, sanitary.showerMixedTempC - fws.coldWaterInletTempC)) * 1000
   ) / 1000;
 
   // Wiederaufladezeiten für genau diese entnommene Duschgang-Energie:
@@ -595,15 +613,15 @@ export function calculateSystemMetrics(
       utilization: fwsCapacityUtilizationPercent ?? 0,
       rule: 'DIN 1988-300 / DIN EN 806 Spitzenlast',
       description: fwsCapacityEvaluation === 'UNPROVEN_AT_OPERATING_POINT'
-        ? `Hersteller-Leistungsdaten bei ${fws.primaryFlowTempC}°C Primär-VL noch nicht nachgewiesen. Nennwert bei 70°C: ${fwsNominalCapacityLmin.toFixed(1)} l/min.`
+        ? `Hersteller-Leistungsdaten bei aktuellem Programm (${fws.primaryFlowTempC}/${fws.primaryReturnTempC} → ${fws.coldWaterInletTempC}/${fws.hotWaterOutletTempC}°C) nicht belegt (Modell-/Prüfpunkt). Nennwert bei 70/25→10/60°C: ${fwsNominalCapacityLmin.toFixed(1)} l/min.`
         : `Spitzendurchfluss: ${peakHotWaterFlowLmin} l/min bei ${fwsTotalCapacityLmin.toFixed(1)} l/min Gesamtkapazität (${effectiveFwsCount} FWS).`,
     },
     bufferDimensioningCheck: {
       status: bufferDimStatus as 'OK' | 'WARNING' | 'ERROR',
       storedMinutes: autonomyStorageOnlyMinutes,
-      rule: 'DIN 4708 Zentrale Wassererwärmungsanlagen',
+      rule: 'Betriebliche Plausibilitätsbewertung (angelehnt an DIN 4708)',
       description: isThermalSupplyFeasible
-        ? 'Speichervorrat (6.000 l) muss Bedarfsspitzen ohne Temperaturabfall überbrücken können.'
+        ? 'Betriebliche Richtwerte zur Spitzenabdeckung: Heißschicht ≥ 15 min gilt als unkritisch, 8–15 min als betrieblich eng. (Hinweis: Dies ist eine praxisbezogene Plausibilitätsbewertung, keine formal dokumentierte DIN-4708-Auslegungsanforderung der Bestandsunterlagen).'
         : supplyInfeasibilityReason,
     },
     vdi6023Stagnation: {

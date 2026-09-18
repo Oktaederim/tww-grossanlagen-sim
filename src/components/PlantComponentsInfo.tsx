@@ -529,12 +529,14 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
               <div className="flex items-center gap-2">
                 <span
                   className={`px-2.5 py-1 rounded font-mono font-semibold text-xs ${
-                    metrics.fwsSufficient
+                    metrics.fwsCapacityUtilizationPercent !== undefined && metrics.fwsCapacityUtilizationPercent > 100
+                      ? 'bg-rose-50 text-rose-700 border border-rose-300'
+                      : metrics.fwsSufficient
                       ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
-                      : 'bg-rose-50 text-rose-700 border border-rose-300'
+                      : 'bg-amber-50 text-amber-700 border border-amber-300'
                   }`}
                 >
-                  Auslastung: {metrics.fwsCapacityUtilizationPercent}% ({metrics.fwsTotalCapacityLmin} l/min Kapazität)
+                  Auslastung: {metrics.fwsCapacityUtilizationPercent !== undefined ? `${metrics.fwsCapacityUtilizationPercent}%` : 'Prüfpunkt (nicht belegt)'} ({metrics.fwsTotalCapacityLmin} l/min Nennkaskade)
                 </span>
               </div>
             </div>
