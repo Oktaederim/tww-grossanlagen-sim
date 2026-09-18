@@ -151,7 +151,7 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
                   Wärmepumpen-Kaskade (3x Mitsubishi QAHV-N560YA-HPB à 40,0 kW th = 120,0 kW)
                 </h3>
                 <p className="text-slate-500 mt-0.5">
-                  Dokumentierter Typenschild-Bestand: 40,0 kW th, 10,97 kW el, COP 3,65 bei A7/W9→65°C.
+                  3x Wärmepumpen laut Projektunterlagen vorhanden (Typengleichheit aller 3 QAHV-Geräte bei Vor-Ort-Aufnahme noch abschließend zu dokumentieren). Referenzdaten: 40,0 kW th, 10,97 kW el, COP 3,65 bei A7/W9→65°C.
                 </p>
               </div>
               <div className="flex items-center gap-2">

@@ -581,7 +581,7 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                   Nenn (Kombi 256 kW): <strong className="text-emerald-700">{metrics.showerSessionRechargeTimeNominalCombinedMinutes} Min.</strong>
                 </span>
                 <span className="font-mono text-blue-800">
-                  Puffer-Autonomie: <strong>{metrics.autonomyStorageOnlyMinutes} Min.</strong>
+                  Puffer-Autonomie: <strong>{metrics.isThermalSupplyFeasible ? `${metrics.autonomyStorageOnlyMinutes} Min.` : '0 Min. (Versorgung nicht möglich)'}</strong>
                 </span>
               </div>
             </div>
@@ -598,7 +598,7 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                     Wärmeerzeuger (3x Mitsubishi QAHV-N560YA-HPB + 136 kW Plattenwärmetauscher)
                   </h3>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
-                    Bestätigter Typenschild-Bestand
+                    Projektbestand (Typengleichheit vor Ort zu verifizieren)
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -1145,9 +1145,9 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                   </span>
                 </div>
                 <div className="flex justify-between text-slate-700">
-                  <span className="text-slate-600">Gesamter Wärmeinhalt über Rücklauf:</span>
+                  <span className="text-slate-600">Theoretische Wärme bei vollen 6.000 l ({buffer.topTempC}→{buffer.bottomTempC} °C):</span>
                   <span className="font-bold font-mono text-slate-800">
-                    {metrics.storedEnergyFullDeltaKwh} kWh
+                    {metrics.storageThermalContentFullDeltaKwh ?? metrics.storedEnergyFullDeltaKwh} kWh
                   </span>
                 </div>
                 <div className="flex justify-between text-slate-700">

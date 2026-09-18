@@ -295,10 +295,12 @@ export function calculateSystemMetrics(
 
   if (effectiveFwsCount === 0 && peakHotWaterFlowLmin > 0) {
     isThermalSupplyFeasible = false;
+    thermalMarginStatus = 'INSUFFICIENT';
     supplyInfeasibilityReason = 'Keine Frischwasserstation aktiv! Warmwasserversorgung unterbrochen.';
-  } else if (isHydraulicOverloaded) {
-    thermalMarginStatus = 'CRITICAL_MARGIN';
-    supplyInfeasibilityReason = `Spitzen-Warmwasserbedarf (${peakHotWaterFlowLmin} l/min) übersteigt die Nennleistung der ${effectiveFwsCount} aktiven FWS (${fwsTotalCapacityLmin.toFixed(1)} l/min).`;
+  } else if (fwsCapacityEvaluation === 'PROVEN_INSUFFICIENT' && peakHotWaterFlowLmin > 0) {
+    isThermalSupplyFeasible = false;
+    thermalMarginStatus = 'INSUFFICIENT';
+    supplyInfeasibilityReason = `FWS-Überlastung: Spitzen-Warmwasserbedarf (${peakHotWaterFlowLmin} l/min) übersteigt die Nennleistung der ${effectiveFwsCount} aktiven FWS (${fwsTotalCapacityLmin.toFixed(1)} l/min). Keine reguläre 60°C TWW-Versorgung möglich.`;
   }
 
   // Gesamter thermischer Energieinhalt bezogen auf Kaltwasser (10°C)
@@ -306,14 +308,17 @@ export function calculateSystemMetrics(
   const storedEnergyFullDeltaKwh =
     Math.round(totalStorageVolumeLiters * SPECIFIC_HEAT_WATER_KWH_PER_L_K * fullDeltaT * 10) / 10;
 
-  // Ladezustand in % (bezogen auf Zielbeladung vs minUsableTemp)
+  // Ladezustand in % konsistent zum gewählten Speichermodell:
+  // Maximale unmittelbar nutzbare Energie bei voller Beladung (T_oben = Soll z. B. 65°C über Mindestnutztemperatur 60°C)
   const maxPossibleDeltaT = Math.max(1, buffer.targetChargingTempC - buffer.minUsableTempC);
-  const currentAvgTemp = (buffer.topTempC + buffer.bottomTempC) / 2;
-  const currentDeltaT = Math.max(0, currentAvgTemp - buffer.minUsableTempC);
-  const storageStateOfChargePercent = Math.min(
-    100,
-    Math.max(0, Math.round((currentDeltaT / maxPossibleDeltaT) * 100))
-  );
+  const maxUsableEnergyKwh =
+    totalStorageVolumeLiters * SPECIFIC_HEAT_WATER_KWH_PER_L_K * maxPossibleDeltaT;
+
+  // Der Ladezustand entspricht dem Verhältnis der aktuell unmittelbar nutzbaren Energie zur maximal nutzbaren Energie
+  const storageStateOfChargePercent =
+    maxUsableEnergyKwh > 0
+      ? Math.min(100, Math.max(0, Math.round((totalStoredEnergyKwh / maxUsableEnergyKwh) * 100)))
+      : 0;
 
   // Wiederaufheizzeit des Speichers von minUsableTemp auf targetChargingTemp (Stunden)
   const storageReheatEnergyNeededKwh =
@@ -432,17 +437,19 @@ export function calculateSystemMetrics(
     Math.round((showerSessionEnergyKwh / nominalCombinedPowerKw) * 60 * 10) / 10;
 
   // Dynamische Zeiten basierend auf aktuell tatsächlich aktiven Erzeugern (ohne fiktive Ersatzleistung):
+  const activeWtPowerKw = centralHeating.enabled ? centralHeating.powerKw : 0;
+
   const showerSessionRechargeTimeWpMinutes =
     totalWpThermalPowerKw > 0
       ? Math.round((showerSessionEnergyKwh / totalWpThermalPowerKw) * 60 * 10) / 10
       : undefined;
 
   const showerSessionRechargeTimeWtMinutes =
-    centralHeating.powerKw > 0
-      ? Math.round((showerSessionEnergyKwh / centralHeating.powerKw) * 60 * 10) / 10
+    activeWtPowerKw > 0
+      ? Math.round((showerSessionEnergyKwh / activeWtPowerKw) * 60 * 10) / 10
       : undefined;
 
-  const totalActiveGenPowerKw = totalWpThermalPowerKw + centralHeating.powerKw;
+  const totalActiveGenPowerKw = totalWpThermalPowerKw + activeWtPowerKw;
   const showerSessionRechargeTimeCombinedMinutes =
     totalActiveGenPowerKw > 0
       ? Math.round((showerSessionEnergyKwh / totalActiveGenPowerKw) * 60 * 10) / 10
@@ -461,8 +468,8 @@ export function calculateSystemMetrics(
       ? Math.round((storageReheatEnergyNeededKwh / totalWpThermalPowerKw) * 10) / 10
       : undefined;
   const fullStorageRechargeHoursWt =
-    centralHeating.powerKw > 0
-      ? Math.round((storageReheatEnergyNeededKwh / centralHeating.powerKw) * 10) / 10
+    activeWtPowerKw > 0
+      ? Math.round((storageReheatEnergyNeededKwh / activeWtPowerKw) * 10) / 10
       : undefined;
   const fullStorageRechargeHoursCombined =
     totalActiveGenPowerKw > 0

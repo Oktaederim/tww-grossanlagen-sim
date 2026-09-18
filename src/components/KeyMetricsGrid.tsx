@@ -294,7 +294,9 @@ export const KeyMetricsGrid: React.FC<KeyMetricsGridProps> = ({
           </div>
           <div className="mt-2 pt-1.5 border-t border-slate-100 space-y-0.5 text-[11px] text-slate-600">
             <div className="flex items-center justify-between">
-              <span className="text-slate-500">Gesamt-Wärmeinhalt:</span>
+              <span className="text-slate-500" title="Theoretische Wärme bei vollständigen 6.000 l (z. B. 65→30°C)">
+                Theor. Wärme (voll 6.000 l):
+              </span>
               <span className="font-mono font-semibold text-slate-800">
                 {metrics.storageThermalContentFullDeltaKwh ?? metrics.storedEnergyFullDeltaKwh} kWh
               </span>
@@ -321,13 +323,19 @@ export const KeyMetricsGrid: React.FC<KeyMetricsGridProps> = ({
               <Clock className="w-4 h-4 text-indigo-500" />
             </div>
             <div className="text-xl sm:text-2xl font-bold text-slate-900">
-              {metrics.autonomyStorageOnlyMinutes > 240
-                ? '> 4 Std.'
-                : `${metrics.autonomyStorageOnlyMinutes} min`}
+              {!metrics.isThermalSupplyFeasible ? (
+                <span className="text-rose-600 text-base sm:text-lg">0 min (Keine Deckung)</span>
+              ) : metrics.autonomyStorageOnlyMinutes > 240 ? (
+                '> 4 Std.'
+              ) : (
+                `${metrics.autonomyStorageOnlyMinutes} min`
+              )}
             </div>
           </div>
           <div className="mt-1 text-[11px] text-slate-600">
-            {metrics.autonomyWithGenerationMinutes > 500 ? (
+            {!metrics.isThermalSupplyFeasible ? (
+              <span className="text-rose-600 font-medium">Versorgung 60°C TWW nicht möglich</span>
+            ) : metrics.autonomyWithGenerationMinutes > 500 ? (
               <span className="text-emerald-600 font-medium">Dauerbetrieb möglich</span>
             ) : (
               <span>Mit Erzeuger: {metrics.autonomyWithGenerationMinutes} min</span>

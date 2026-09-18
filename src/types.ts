@@ -94,7 +94,7 @@ export interface SystemCalculations {
   totalStorageVolumeLiters: number;
   totalStoredEnergyKwh: number; // Unmittelbar für 60°C TWW nutzbare Energie (Delta zu minUsableTemp)
   storageImmediateUsableEnergyKwh: number; // Unmittelbar für 60°C TWW nutzbar
-  storageThermalContentFullDeltaKwh: number; // Gesamter thermischer Energieinhalt über Rücklauf
+  storageThermalContentFullDeltaKwh: number; // Theoretische Wärme bei vollständigen 6.000 l (z. B. 65→30°C)
   storedEnergyFullDeltaKwh: number; // Bezogen auf Kaltwasser (10°C) bzw. Rücklauf
   storageStateOfChargePercent: number; // 0 - 100%
   storageReheatTimeHours: number; // Zeit zur Vollladung bei aktiven Wärmeerzeugern

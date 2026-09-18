@@ -68,7 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Plant Tags with Status Classification */}
             <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-800 border border-emerald-600/40 text-emerald-300" title="Dokumentierter Typenschild-Bestand">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-800 border border-emerald-600/40 text-emerald-300" title="Projektbestand: 3x WP (Typengleichheit bei Vor-Ort-Aufnahme noch abschließend zu verifizieren)">
                 <Zap className="w-3.5 h-3.5 text-emerald-400" />
                 3x Mitsubishi QAHV (120 kW th / COP 3,65)
               </span>
