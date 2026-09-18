@@ -96,7 +96,9 @@ export interface SystemCalculations {
   storageImmediateUsableEnergyKwh: number; // Unmittelbar für 60°C TWW nutzbar
   storageThermalContentFullDeltaKwh: number; // Theoretische Wärme bei vollständigen 6.000 l (z. B. 65→30°C)
   storedEnergyFullDeltaKwh: number; // Bezogen auf Kaltwasser (10°C) bzw. Rücklauf
-  storageStateOfChargePercent: number; // 0 - 100%
+  storageStateOfChargePercent: number; // 0 - 100% Ladezustand des definierten Speichermodell-Volumens
+  storageTemperatureChargePercent: number; // Temperaturzustand des Heißbereichs (100% bei Erreichen der Solltemperatur)
+  storageEffectiveLayerFractionPercent: number; // Angenommener nutzbarer Heißvolumen-Anteil (z.B. 60%)
   storageReheatTimeHours: number; // Zeit zur Vollladung bei aktiven Wärmeerzeugern
   singleShowerEnergyKwh: number; // Dynamisch berechnete Energie für 1 Duschgang (kWh)
   

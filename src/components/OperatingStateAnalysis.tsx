@@ -473,10 +473,10 @@ export const OperatingStateAnalysis: React.FC<OperatingStateAnalysisProps> = ({
                   Ingenieur-Hinweis zur Spitzenlast ({metrics.peakThermalDemandKw} kW / {metrics.fwsCapacityUtilizationPercent}% FWS-Auslastung):
                 </strong>
                 <p className="mt-0.5 text-[11px] text-amber-900 leading-relaxed">
-                  Die 4 Frischwasserstationen sind für zusammen <strong>200 l/min</strong> Warmwasser (ca. 698 kW) ausgelegt. 
-                  Bei {metrics.activeShowersCount} gleichzeitig voll geöffneten Duschen werden physikalisch <strong>{metrics.peakHotWaterFlowLmin} l/min</strong> (60°C) angefordert. 
-                  Das 6.000 L Puffer-Wärmevolumen liefert die Energie ({metrics.totalStoredEnergyKwh} kWh nutzbar) problemlos, 
-                  jedoch laufen die Plattenwärmetauscher der Stationen mit 112% oberhalb der Nennleistung (wodurch die Auslauftemperatur ohne Durchflussbegrenzer kurzzeitig um 2–4 K absinken kann).
+                  Die 4 Frischwasserstationen besitzen eine dokumentierte Nennleistung von zusammen <strong>149,2 l/min</strong> Warmwasser (4x 130 kW bei 70/25 → 10/60 °C). 
+                  Bei {metrics.activeShowersCount} gleichzeitig voll geöffneten Duschen werden rechnerisch <strong>{metrics.peakHotWaterFlowLmin} l/min</strong> (60°C) angefordert. 
+                  Der Speicher stellt {metrics.totalStoredEnergyKwh} kWh unmittelbar nutzbare Energie bereit; übersteigt der Spitzenbedarf jedoch die Stationskapazität, 
+                  ist die Warmwasserbereitung hydraulisch überlastet und die Solltemperatur kann nicht stabil gehalten werden.
                 </p>
               </div>
             </div>

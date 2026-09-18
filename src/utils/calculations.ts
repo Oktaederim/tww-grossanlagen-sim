@@ -309,15 +309,27 @@ export function calculateSystemMetrics(
     Math.round(totalStorageVolumeLiters * SPECIFIC_HEAT_WATER_KWH_PER_L_K * fullDeltaT * 10) / 10;
 
   // Ladezustand in % konsistent zum gewählten Speichermodell:
-  // Maximale unmittelbar nutzbare Energie bei voller Beladung (T_oben = Soll z. B. 65°C über Mindestnutztemperatur 60°C)
-  const maxPossibleDeltaT = Math.max(1, buffer.targetChargingTempC - buffer.minUsableTempC);
-  const maxUsableEnergyKwh =
-    totalStorageVolumeLiters * SPECIFIC_HEAT_WATER_KWH_PER_L_K * maxPossibleDeltaT;
+  // 1. Nutzbarer Heißvolumen-Anteil des Modells:
+  const storageEffectiveLayerFractionPercent = Math.round(
+    (usableHotVolumeLiters / totalStorageVolumeLiters) * 100
+  );
 
-  // Der Ladezustand entspricht dem Verhältnis der aktuell unmittelbar nutzbaren Energie zur maximal nutzbaren Energie
+  // 2. Temperaturzustand der Heißzone bezogen auf das Sollziel (z. B. 65°C Soll über 60°C Mindestnutztemp):
+  const maxPossibleDeltaT = Math.max(1, buffer.targetChargingTempC - buffer.minUsableTempC);
+  const currentHotLayerDeltaT = Math.max(0, buffer.topTempC - buffer.minUsableTempC);
+  const storageTemperatureChargePercent = Math.min(
+    100,
+    Math.max(0, Math.round((currentHotLayerDeltaT / maxPossibleDeltaT) * 100))
+  );
+
+  // 3. Maximal nutzbare Energie innerhalb des gewählten Modellvolumens bei Solltemperatur:
+  const modelMaxUsableEnergyKwh =
+    usableHotVolumeLiters * SPECIFIC_HEAT_WATER_KWH_PER_L_K * maxPossibleDeltaT;
+
+  // 4. Modellabhängiger Ladezustand (SoC) des definierten Heißbereichs:
   const storageStateOfChargePercent =
-    maxUsableEnergyKwh > 0
-      ? Math.min(100, Math.max(0, Math.round((totalStoredEnergyKwh / maxUsableEnergyKwh) * 100)))
+    modelMaxUsableEnergyKwh > 0
+      ? Math.min(100, Math.max(0, Math.round((totalStoredEnergyKwh / modelMaxUsableEnergyKwh) * 100)))
       : 0;
 
   // Wiederaufheizzeit des Speichers von minUsableTemp auf targetChargingTemp (Stunden)
@@ -403,7 +415,7 @@ export function calculateSystemMetrics(
   } else if (netPowerBalanceKw < -5) {
     operatingStateKey = 'DISCHARGING_SLOW';
     operatingStateTitle = 'Mäßige Speicherentladung (Teillast)';
-    operatingStateDescription = `Geringe Unterdeckung von ${Math.abs(netPowerBalanceKw)} kW. Die Puffer überbrücken diesen Zustand problemlos über viele Stunden.`;
+    operatingStateDescription = `Geringe Unterdeckung von ${Math.abs(netPowerBalanceKw)} kW. Die Puffer decken die Unterdeckung rechnerisch für ca. ${autonomyWithGenerationMinutes > 500 ? 'mehrere Stunden' : `${autonomyWithGenerationMinutes} Minuten`}.`;
   }
 
   // 8. Spezifische Duschgang-Wassermengen & Nachladezeiten
@@ -641,7 +653,7 @@ export function calculateSystemMetrics(
     );
   } else {
     monteurTips.push(
-      `Kühle Puffer-Rücklauftemperatur (${buffer.bottomTempC}°C, Ziel: ≤ 30°C) begünstigt die transkritische CO2-Kältemittel-Unterkühlung.`
+      `Kühle Puffer-Rücklauftemperatur (${buffer.bottomTempC}°C, Ziel: ≤ 30°C) begünstigt einen effizienten Betrieb des transkritischen CO2-Gaskühlungsprozesses bei niedriger Wassereintrittstemperatur.`
     );
   }
   if (avgSourceTempC < 4) {
@@ -720,6 +732,8 @@ export function calculateSystemMetrics(
     storageThermalContentFullDeltaKwh,
     storedEnergyFullDeltaKwh,
     storageStateOfChargePercent,
+    storageTemperatureChargePercent,
+    storageEffectiveLayerFractionPercent,
     storageReheatTimeHours,
     singleShowerEnergyKwh,
     activeShowersCount,

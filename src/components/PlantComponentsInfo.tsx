@@ -408,8 +408,11 @@ export const PlantComponentsInfo: React.FC<PlantComponentsInfoProps> = ({
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded bg-cyan-50 text-cyan-800 border border-cyan-200 font-semibold font-mono">
-                  Ladezustand (SoC): {metrics.storageStateOfChargePercent}%
+                <span 
+                  className="px-2.5 py-1 rounded bg-cyan-50 text-cyan-800 border border-cyan-200 font-semibold font-mono"
+                  title={`Nutzbarer Heißanteil: ${metrics.storageEffectiveLayerFractionPercent}%, Temperaturzustand: ${metrics.storageTemperatureChargePercent}%`}
+                >
+                  Ladezustand: {metrics.storageStateOfChargePercent}% ({metrics.storageEffectiveLayerFractionPercent}% Heißanteil / {metrics.storageTemperatureChargePercent}% Temp.)
                 </span>
                 <span className="px-2.5 py-1 rounded bg-slate-100 text-slate-800 font-mono">
                   Nutzbarer Wärmeinhalt: {metrics.totalStoredEnergyKwh} kWh

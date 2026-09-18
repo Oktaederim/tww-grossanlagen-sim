@@ -15,6 +15,7 @@ import {
   Calculator,
   RotateCcw,
   Sparkles,
+  AlertTriangle,
 } from 'lucide-react';
 import { SystemCalculations, OperatingCostConfig } from '../types';
 import {
@@ -736,6 +737,14 @@ export const OperatingCostModule: React.FC<OperatingCostModuleProps> = ({
                     {(costConfig.electricityPricePerKwh / 3.4 * 100).toFixed(1)} ct/kWh
                   </span>{' '}
                   (rund 30% weniger Energiekosten!).
+                </span>
+              </div>
+
+              {/* Hinweis zur Berechnungsgrundlage / QAHV-Datenblatt */}
+              <div className="mt-2 text-xs text-amber-900 bg-amber-50/90 p-2.5 rounded-lg border border-amber-200 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span className="text-[11px] leading-relaxed">
+                  <strong>Hinweis zur Berechnungsgrundlage:</strong> Der Referenzpunkt (A7, W9→65°C: 40,0 kW th, 10,97 kW el, COP 3,65) ist durch das Mitsubishi-Datenblatt dokumentiert. Die COP-Berechnung außerhalb dieses Referenzpunktes ist eine thermodynamische Modell-Näherung (Carnot-Gütegrad mit Rücklauftemperatur-Korrektur). Für verbindliche energiewirtschaftliche Wirtschaftlichkeitsprüfungen und Kostenabrechnungen sind stets die herstellerspezifischen Leistungsdiagramme der QAHV-N560YA heranzuziehen.
                 </span>
               </div>
             </div>

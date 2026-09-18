@@ -301,10 +301,13 @@ export const KeyMetricsGrid: React.FC<KeyMetricsGridProps> = ({
                 {metrics.storageThermalContentFullDeltaKwh ?? metrics.storedEnergyFullDeltaKwh} kWh
               </span>
             </div>
-            <div className="flex items-center justify-between">
-              <span>6.000 L Speicher</span>
-              <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded text-[10px]">
-                {metrics.storageStateOfChargePercent}% geladen
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-slate-500">Heißschicht / Temp.:</span>
+              <span
+                className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px]"
+                title={`Nutzbarer Heißanteil im Modell: ${metrics.storageEffectiveLayerFractionPercent}%, Temperaturzustand der Heißzone: ${metrics.storageTemperatureChargePercent}%`}
+              >
+                {metrics.storageEffectiveLayerFractionPercent}% Heißanteil | {metrics.storageTemperatureChargePercent}% Temp.
               </span>
             </div>
           </div>

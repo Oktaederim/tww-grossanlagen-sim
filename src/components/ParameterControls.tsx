@@ -1151,9 +1151,9 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                   </span>
                 </div>
                 <div className="flex justify-between text-slate-700">
-                  <span>Ladezustand (SoC):</span>
-                  <span className="font-bold font-mono text-cyan-800">
-                    {metrics.storageStateOfChargePercent} %
+                  <span>Ladezustand Heißvolumen:</span>
+                  <span className="font-bold font-mono text-cyan-800" title={`Nutzbarer Heißanteil: ${metrics.storageEffectiveLayerFractionPercent}%, Temperaturzustand: ${metrics.storageTemperatureChargePercent}%`}>
+                    {metrics.storageStateOfChargePercent} % ({metrics.storageEffectiveLayerFractionPercent}% Heißanteil / {metrics.storageTemperatureChargePercent}% Temp.)
                   </span>
                 </div>
                 <div className="flex justify-between text-slate-700 border-t border-cyan-200 pt-2">
