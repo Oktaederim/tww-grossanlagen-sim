@@ -338,7 +338,7 @@ export const OperatingCostModule: React.FC<OperatingCostModuleProps> = ({
                   <span className="text-slate-600">Stunden/Tag</span>
                 </div>
                 <span className="text-[10px] text-slate-600 block mt-1">
-                  Rest: 24h Zirkulation & Bereitschaft
+                  Automatisch berechnet: <strong>{24 - costConfig.dailyHighLoadHours} h/Tag</strong> Schwachlast/Zirkulation (24h − {costConfig.dailyHighLoadHours}h)
                 </span>
               </div>
 

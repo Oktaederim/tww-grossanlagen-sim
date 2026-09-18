@@ -205,15 +205,31 @@ export const KeyMetricsGrid: React.FC<KeyMetricsGridProps> = ({
                 {metrics.totalHeatGenerationPowerKw}{' '}
                 <span className="text-sm font-medium text-slate-500">kW</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowCopDetails(!showCopDetails)}
-                title="Klicken für dynamischen COP-Verlauf und Monteur-Diagnose"
-                className={`inline-flex items-center gap-1 font-bold text-xs px-2 py-0.5 rounded-full border cursor-pointer transition shadow-2xs ${statusTheme.badge}`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${statusTheme.dot}`} />
-                COP {metrics.systemCop}
-              </button>
+              <div className="flex flex-col items-end gap-1">
+                <button
+                  type="button"
+                  onClick={() => setShowCopDetails(!showCopDetails)}
+                  title="Klicken für dynamischen COP-Verlauf und Monteur-Diagnose"
+                  className={`inline-flex items-center gap-1 font-bold text-xs px-2 py-0.5 rounded-full border cursor-pointer transition shadow-2xs ${statusTheme.badge}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${statusTheme.dot}`} />
+                  COP {metrics.systemCop}
+                </button>
+                <span
+                  className={`text-[9.5px] font-semibold px-1.5 py-0.5 rounded border ${
+                    copAnalysis.isDocumentedReferencePoint
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                      : 'bg-slate-100 text-slate-600 border-slate-300'
+                  }`}
+                  title={
+                    copAnalysis.isDocumentedReferencePoint
+                      ? 'Dokumentierter Typenschildpunkt A7/W9→65°C laut Mitsubishi-Datenblatt'
+                      : `Modell-COP auf Carnot-Basis (Wassereintritt: ${copAnalysis.bufferBottomTempC}°C vs. 9°C Referenz)`
+                  }
+                >
+                  {copAnalysis.copTypeLabel}
+                </span>
+              </div>
             </div>
 
             {/* Dynamischer COP Mini-Pegelbalken für Sofortbewertung */}
@@ -475,14 +491,25 @@ export const KeyMetricsGrid: React.FC<KeyMetricsGridProps> = ({
                 <TrendingUp className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 flex-wrap">
                   Wärmepumpen COP-Kennlinie & Effizienz-Verlauf
+                  <span
+                    className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                      copAnalysis.isDocumentedReferencePoint
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                        : 'bg-slate-100 text-slate-700 border-slate-300'
+                    }`}
+                  >
+                    {copAnalysis.copTypeLabel}
+                  </span>
                   <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${statusTheme.badge}`}>
                     {copAnalysis.efficiencyLabel}
                   </span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Dynamische Leistungszahl (COP) in Abhängigkeit von Quell- ({copAnalysis.avgSourceTempC}°C) und Speichervorlauftemperatur ({copAnalysis.avgFlowTempC}°C)
+                  {copAnalysis.isDocumentedReferencePoint
+                    ? 'Dokumentierter Typenschild-Referenzpunkt laut Mitsubishi-Datenblatt (A7/W9→65°C: 40,0 kW th, 10,97 kW el = COP 3,65).'
+                    : `Thermodynamische Modellschätzung: Quellluft ${copAnalysis.avgSourceTempC}°C, Puffervorlauf ${copAnalysis.avgFlowTempC}°C, Wassereintritt ${copAnalysis.bufferBottomTempC}°C (Referenz: 9°C).`}
                 </p>
               </div>
             </div>

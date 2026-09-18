@@ -234,7 +234,7 @@ export interface SystemCalculations {
     };
   };
   overallStatus: 'OK' | 'WARNING' | 'ERROR';
-  overallScorePercent: number;
+  overallScorePercent?: number;
 }
 
 export interface TechnicianInspection {
@@ -287,6 +287,8 @@ export interface CopAnalysis {
   efficiencyLabel: string;
   efficiencyBadgeClass: string;
   efficiencyDescription: string;
+  isDocumentedReferencePoint: boolean; // Nur TRUE bei A7, W9->65°C
+  copTypeLabel: 'Dokumentierter COP' | 'Modell-COP';
   monteurTips: string[];
   sourceTempCurve: {
     sourceTemp: number;
@@ -306,7 +308,7 @@ export interface OperatingCostConfig {
   electricityPricePerKwh: number; // Strompreis in €/kWh (z.B. 0.32 €/kWh = 32 ct/kWh)
   comparisonHeatingPricePerKwh: number; // Vergleichspreis für Zentralheizung/Fernwärme in €/kWh (z.B. 0.12 €/kWh)
   dailyHighLoadHours: number; // Stunden pro Tag mit aktiver Duschzapfung (z.B. 4h)
-  dailyLowLoadHours: number; // Stunden pro Tag mit reiner Zirkulation (z.B. 20h)
+  dailyLowLoadHours?: number; // Automatisch 24h - highLoadHours (nur Zirkulation & Bereitschaft)
   operatingDaysPerYear: number; // Betriebstage pro Jahr (z.B. 300)
 }
 
@@ -348,10 +350,9 @@ export interface OperatingCostResults {
   annualSavingsVsDirectElectricEur: number;
   annualSavingsVsCentralHeatingEur: number;
 
-  // COP Sensitivitätskurve: Wie verändern sich die Wärmekosten bei variierendem COP?
+  // COP Sensitivitätskurve: Reine Zuordnung COP -> Wärmekosten ct/kWh_th (ohne künstliche Quellentemperatur)
   copCostCurve: {
     cop: number;
-    sourceTemp: number;
     heatCostCentPerKwhTh: number;
     hourlyCostAtCurrentLoadEur: number;
     isCurrent: boolean;

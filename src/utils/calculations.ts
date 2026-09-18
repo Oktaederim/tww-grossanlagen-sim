@@ -43,10 +43,17 @@ export function calculateDynamicCop(
 ): number {
   const NOMINAL_SOURCE_TEMP = 7.0;
   const NOMINAL_FLOW_TEMP = 65.0;
-  const NOMINAL_COP = 3.65; // Mitsubishi QAHV: 40.0 kW / 10.97 kW
+  const NOMINAL_INLET_TEMP = 9.0;
+  const NOMINAL_COP = 3.65; // Mitsubishi QAHV: 40.0 kW / 10.97 kW bei A7/W9->65°C
 
-  // Exakter Treffer am dokumentierten Typenschildpunkt
-  if (Math.abs(sourceTempC - NOMINAL_SOURCE_TEMP) < 0.1 && Math.abs(flowTempC - NOMINAL_FLOW_TEMP) < 0.1) {
+  // Exakter Treffer am dokumentierten Typenschildpunkt (A7/W9->65°C)
+  // Gilt fachlich NUR, wenn Außenluft 7°C, Vorlauf 65°C UND Wassereintritt 9°C vorliegen!
+  const isDocumentedPoint =
+    Math.abs(sourceTempC - NOMINAL_SOURCE_TEMP) < 0.2 &&
+    Math.abs(flowTempC - NOMINAL_FLOW_TEMP) < 0.2 &&
+    Math.abs(bufferBottomTempC - NOMINAL_INLET_TEMP) < 0.5;
+
+  if (isDocumentedPoint) {
     return NOMINAL_COP;
   }
 
@@ -63,11 +70,24 @@ export function calculateDynamicCop(
   // Gütegrad eta_c basierend auf dem dokumentierten Referenzpunkt (~0.626)
   const etaCarnot = NOMINAL_COP / nominalCarnotCop;
 
-  // Bei CO2 (R744 transkritisch) beeinflusst die Rücklauftemperatur die Gaskühlung maßgeblich:
-  // Rücklauftemperaturen über 30°C vermindern den COP.
-  const returnPenalty = Math.max(0, bufferBottomTempC - 30.0) * 0.025;
+  // Einfluss der Wassereintrittstemperatur bei CO2 (R744 transkritisch):
+  // Laut Mitsubishi QAHV-Planungshandbuch führt bei A7/W65 ein Eintritt von 15°C statt 9°C
+  // zu einem COP-Abfall von 3,65 auf 3,44 (ca. 0,035 COP-Verlust pro Kelvin Eintrittserhöhung).
+  const inletDiffK = bufferBottomTempC - NOMINAL_INLET_TEMP;
+  let inletPenalty = 0;
+  if (inletDiffK > 0) {
+    // Grundverlust durch höhere Gaskühleraustrittstemperatur
+    inletPenalty = inletDiffK * 0.035;
+    // Zusätzlicher progressiver Verlust bei > 30°C Rücklauf (Nähe zum kritischen Punkt 31,1 °C)
+    if (bufferBottomTempC > 30.0) {
+      inletPenalty += (bufferBottomTempC - 30.0) * 0.025;
+    }
+  } else if (inletDiffK < 0) {
+    // Kälteres Eintrittswasser als 9°C verbessert die Gaskühlung
+    inletPenalty = inletDiffK * 0.015;
+  }
 
-  const estimatedCop = (carnotCop * etaCarnot) - returnPenalty;
+  const estimatedCop = (carnotCop * etaCarnot) - inletPenalty;
   return Math.round(Math.min(4.8, Math.max(1.8, estimatedCop)) * 100) / 100;
 }
 
@@ -98,10 +118,20 @@ export function calculateSystemMetrics(
       ? Math.round((totalWpThermalPowerKw / totalWpElectricalPowerKw) * 100) / 100
       : 0;
 
+  // Der Referenzpunkt gilt NUR als dokumentiert, wenn Außenluft 7°C, Vorlauf 65°C UND Wassereintritt 9°C vorliegen.
+  // Liegt der Pufferrücklauf beispielsweise bei 30°C, handelt es sich um einen Modell-COP.
   const isQahvDocumentedPoint =
-    heatPumps.some((wp) => wp.enabled && Math.abs(wp.sourceTempC - 7.0) < 0.1 && Math.abs(wp.flowTempC - 65.0) < 0.1);
-  const qahvCopReferenceText =
-    'Dokumentierter Typenschild-Referenzpunkt Mitsubishi QAHV-N560YA-HPB: A7/W9→65°C, 40,0 kW th / 10,97 kW el = COP 3,65.';
+    heatPumps.some(
+      (wp) =>
+        wp.enabled &&
+        Math.abs(wp.sourceTempC - 7.0) < 0.2 &&
+        Math.abs(wp.flowTempC - 65.0) < 0.2 &&
+        Math.abs(buffer.bottomTempC - 9.0) < 0.5
+    );
+
+  const qahvCopReferenceText = isQahvDocumentedPoint
+    ? 'Dokumentierter Typenschild-Referenzpunkt Mitsubishi QAHV-N560YA-HPB: A7/W9→65°C, 40,0 kW th / 10,97 kW el = COP 3,65.'
+    : `Modell-COP auf Basis Carnot-Gütegrad mit Wassereintrittskorrektur (${buffer.bottomTempC}°C Eintritt vs. 9°C Typenschild-Referenz). Außerhalb des dokumentierten Referenzpunktes A7/W9→65°C (COP 3,65) handelt es sich um eine Modellschätzung; für verbindliche Nachweise sind die Hersteller-Leistungsdiagramme heranzuziehen.`;
 
   const centralHeatingPowerKw = centralHeating.enabled ? centralHeating.powerKw : 0;
   const totalHeatGenerationPowerKw = totalWpThermalPowerKw + centralHeatingPowerKw;
@@ -594,10 +624,6 @@ export function calculateSystemMetrics(
     overallStatus = 'WARNING';
   }
 
-  let score = 100 - errorCount * 30 - warningCount * 12;
-  if (!isThermalSupplyFeasible) score = Math.min(score, 40);
-  score = Math.max(10, Math.min(100, score));
-
   // 10. Detaillierte COP- und Effizienzanalyse für Monteure
   const enabledWps = heatPumps.filter((w) => w.enabled);
   const avgSourceTempC =
@@ -622,31 +648,42 @@ export function calculateSystemMetrics(
   let efficiencyStatus: 'OPTIMAL' | 'GOOD' | 'FAIR' | 'CRITICAL' = 'OPTIMAL';
   let efficiencyLabel = 'Optimaler Effizienzbereich';
   let efficiencyBadgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
-  let efficiencyDescription = `Berechneter Modell-COP auf Carnot-Basis (${systemCop}). Außerhalb des Referenzpunktes (A7/W9→65°C: COP 3,65) handelt es sich um eine Modellschätzung; Abgleich mit Hersteller-Leistungsdiagramm erforderlich.`;
+  let efficiencyDescription = '';
 
-  if (systemCop >= 3.3) {
+  if (isQahvDocumentedPoint) {
     efficiencyStatus = 'OPTIMAL';
-    efficiencyLabel = 'Optimaler Bereich (Modell)';
+    efficiencyLabel = 'Dokumentierter Typenschildpunkt (COP 3,65)';
     efficiencyBadgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
-    efficiencyDescription = `Berechneter COP im günstigen Bereich (${systemCop} bei ΔT ${tempLiftK} K Hub). Außerhalb des dokumentierten Referenzpunktes (A7/W9→65°C: COP 3,65) handelt es sich um eine Modellschätzung; Abgleich mit Hersteller-Leistungsdaten erforderlich.`;
+    efficiencyDescription =
+      'Dokumentierter Typenschild-Referenzpunkt Mitsubishi QAHV-N560YA-HPB: A7/W9→65°C (40,0 kW th, 10,97 kW el, COP 3,65). Dieser Betriebspunkt ist durch das Hersteller-Datenblatt belegt.';
+  } else if (systemCop >= 3.3) {
+    efficiencyStatus = 'OPTIMAL';
+    efficiencyLabel = 'Optimaler Bereich (Modell-COP)';
+    efficiencyBadgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+    efficiencyDescription = `Berechneter Modell-COP (${systemCop} bei ΔT ${tempLiftK} K Hub, ${bufferBottomTempC}°C Eintritt). Außerhalb des dokumentierten Referenzpunktes (A7/W9→65°C: COP 3,65) handelt es sich um eine thermodynamische Modellschätzung.`;
   } else if (systemCop >= 2.8) {
     efficiencyStatus = 'GOOD';
-    efficiencyLabel = 'Normaler Standardbereich (Modell)';
+    efficiencyLabel = 'Standardbereich (Modell-COP)';
     efficiencyBadgeClass = 'bg-blue-100 text-blue-800 border-blue-300';
-    efficiencyDescription = `Berechneter Modell-COP (${systemCop}) für Hochtemperatur-TWW-Bereitung. Außerhalb des Referenzpunktes handelt es sich um eine thermodynamische Näherung; Abgleich mit Datenblatt erforderlich.`;
+    efficiencyDescription = `Berechneter Modell-COP (${systemCop}) für Hochtemperatur-TWW-Bereitung. Außerhalb von A7/W9→65°C handelt es sich um eine thermodynamische Näherung; Abgleich mit Datenblatt erforderlich.`;
   } else if (systemCop >= 2.3) {
     efficiencyStatus = 'FAIR';
-    efficiencyLabel = 'Erhöhter Strombedarf (Modell)';
+    efficiencyLabel = 'Erhöhter Strombedarf (Modell-COP)';
     efficiencyBadgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
-    efficiencyDescription = `Großer Temperaturhub (ΔT = ${tempLiftK} K) oder erhöhte Pufferrücklauftemperatur. Berechneter Modell-COP ${systemCop}; erhöhter elektrischer Leistungsbedarf.`;
+    efficiencyDescription = `Großer Temperaturhub (ΔT = ${tempLiftK} K) oder erhöhte Pufferrücklauftemperatur (${bufferBottomTempC}°C vs. 9°C Referenz). Berechneter Modell-COP ${systemCop}; erhöhter elektrischer Leistungsbedarf.`;
   } else {
     efficiencyStatus = 'CRITICAL';
-    efficiencyLabel = 'Niedriger Effizienzbereich (Modell)';
+    efficiencyLabel = 'Niedriger Effizienzbereich (Modell-COP)';
     efficiencyBadgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
     efficiencyDescription = `Sehr großer Temperaturhub oder ungünstige Quellentemperatur (Modell-COP < 2,3). Vergleich mit Zentralheizung hinsichtlich verfügbarer Leistung und Wärmekosten prüfen.`;
   }
 
   const monteurTips: string[] = [];
+  if (isQahvDocumentedPoint) {
+    monteurTips.push(
+      'Dokumentierter Betriebspunkt A7/W9→65°C aktiv: Die Leistungsdaten (40,0 kW th, 10,97 kW el, COP 3,65) entsprechen exakt den Mitsubishi-Herstellerunterlagen.'
+    );
+  }
   if (buffer.bottomTempC > 30) {
     monteurTips.push(
       `Pufferrücklauf liegt bei ${buffer.bottomTempC}°C (Soll: ≤ 30°C). Simulationsannahme: Mögliche Rücklaufeinschichtung in Puffer-Mitte prüfen (in Bestandsunterlagen noch nicht bestätigt).`
@@ -715,6 +752,8 @@ export function calculateSystemMetrics(
     efficiencyLabel,
     efficiencyBadgeClass,
     efficiencyDescription,
+    isDocumentedReferencePoint: isQahvDocumentedPoint,
+    copTypeLabel: isQahvDocumentedPoint ? 'Dokumentierter COP' : 'Modell-COP',
     monteurTips,
     sourceTempCurve,
     flowTempCurve,
@@ -797,7 +836,6 @@ export function calculateSystemMetrics(
     copAnalysis,
     normCompliance,
     overallStatus,
-    overallScorePercent: score,
   };
 }
 

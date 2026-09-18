@@ -4,7 +4,7 @@ export const DEFAULT_OPERATING_COST_CONFIG: OperatingCostConfig = {
   electricityPricePerKwh: 0.32, // 32 ct/kWh Wärmepumpen-/Gewerbestrom
   comparisonHeatingPricePerKwh: 0.12, // 12 ct/kWh Zentralheizung / Fernwärme / Gas (136 kW WT)
   dailyHighLoadHours: 4, // 4 Stunden Dusch-Spitzenbetrieb pro Tag (z.B. Sport-/Vereinsbetrieb)
-  dailyLowLoadHours: 20, // 20 Stunden Zirkulations-Erhalt & Bereitschaft
+  dailyLowLoadHours: 20, // Automatisch berechnet: 24h - highHours
   operatingDaysPerYear: 310, // 310 Betriebstage pro Jahr
 };
 
@@ -111,11 +111,9 @@ export function calculateOperatingCosts(
 
   const monthlyCostWpEur = Math.round(annualCostWpEur / 12);
 
-  // 7. COP Sensitivitätskurve (Kostenverlauf f(COP) bezogen auf QAHV-Referenz 3.65)
+  // 7. COP Sensitivitätskurve (Reiner mathematischer Verlauf Wärmekosten = Strompreis / COP)
   const copTestPoints = [2.0, 2.5, 3.0, 3.65, 4.0, 4.5];
   const copCostCurve = copTestPoints.map((testCop) => {
-    // Näherung Quellentemperatur basierend auf QAHV-Referenzpunkt 7°C bei COP 3.65
-    const approxSourceTemp = Math.round((testCop - 3.65) / (3.65 * 0.020) + 7.0);
     const heatCostCent = Math.round((electricityPrice / testCop) * 100 * 10) / 10;
     const hourlyCostEur =
       Math.round(((actualThermalDemandKw / testCop) * electricityPrice) * 100) / 100;
@@ -123,7 +121,6 @@ export function calculateOperatingCosts(
 
     return {
       cop: testCop,
-      sourceTemp: approxSourceTemp,
       heatCostCentPerKwhTh: heatCostCent,
       hourlyCostAtCurrentLoadEur: hourlyCostEur,
       isCurrent,
