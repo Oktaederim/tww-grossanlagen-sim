@@ -415,6 +415,36 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
                 />
                 3-Wege-Umschaltventil FWS-Rücklauf (Puffer 3 oben/unten) funktionsgeprüft
               </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={inspection.stagnationProtectionActive}
+                  onChange={(e) =>
+                    setInspection((prev) => ({
+                      ...prev,
+                      stagnationProtectionActive: e.target.checked,
+                    }))
+                  }
+                  className="w-4 h-4 rounded text-blue-600 accent-blue-600"
+                />
+                <span>Stagnationsschutz / Spülmaßnahmen (&lt;72h, VDI 6023) nachgewiesen</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={inspection.fwsSecondaryStratValveChecked}
+                  onChange={(e) =>
+                    setInspection((prev) => ({
+                      ...prev,
+                      fwsSecondaryStratValveChecked: e.target.checked,
+                    }))
+                  }
+                  className="w-4 h-4 rounded text-blue-600 accent-blue-600"
+                />
+                <span>3-Wege-Umschaltventil FWS-Rücklauf (Schichtung Puffer 3) funktionstüchtig</span>
+              </label>
             </div>
           </div>
 

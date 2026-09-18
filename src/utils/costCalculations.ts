@@ -62,8 +62,11 @@ export function calculateOperatingCosts(
     Math.round(comparisonPrice * 100 * 10) / 10;
 
   // 5. Duschkosten
-  // Einzeldusche: 6 min, 10 l/min Mischwasser 38°C (von 10°C Kaltwasser)
-  // Q = 60 l * 1.163 Wh/(l*K) * 28 K / 1000 = 1.954 kWh_th
+  // Einzeldusche: 6 min bei 10 l/min Mischwasser 38°C (von 10°C Kaltwasser)
+  // Reale Mischungsformel bei 60°C TWW-Auslauf:
+  // V_WW = 60 l * (38 - 10) / (60 - 10) = 60 * 28 / 50 = 33,6 Liter Warmwasser (60°C).
+  // Q_WW = 33,6 l * 1.163 Wh/(l*K) * 50 K / 1000 = 1.954 kWh_th (bzw. Mischwasserwärme = 60 l * 1.163 * 28 / 1000 = 1.954 kWh_th)
+  // Bei abweichenden Dusch-Mischtemperaturen oder Volllast-Zuständen:
   const singleShowerEnergyKwh = 1.954;
   const costPerSingleShowerEur =
     Math.round(((singleShowerEnergyKwh / currentCop) * electricityPrice) * 1000) / 1000;
@@ -111,15 +114,15 @@ export function calculateOperatingCosts(
 
   const monthlyCostWpEur = Math.round(annualCostWpEur / 12);
 
-  // 7. COP Sensitivitätskurve (Kostenverlauf f(COP))
-  const copTestPoints = [1.8, 2.2, 2.6, 3.0, 3.4, 3.8, 4.2, 4.6, 5.0];
+  // 7. COP Sensitivitätskurve (Kostenverlauf f(COP) bezogen auf Nennauslegung 2.85)
+  const copTestPoints = [1.8, 2.2, 2.5, 2.85, 3.2, 3.6, 4.0];
   const copCostCurve = copTestPoints.map((testCop) => {
-    // Näherung Quellentemperatur basierend auf Nominalwert 7°C bei COP 3.41
-    const approxSourceTemp = Math.round((testCop - 3.41) / (3.41 * 0.024) + 7.0);
+    // Näherung Quellentemperatur basierend auf Nominalwert 7°C bei COP 2.85
+    const approxSourceTemp = Math.round((testCop - 2.85) / (2.85 * 0.020) + 7.0);
     const heatCostCent = Math.round((electricityPrice / testCop) * 100 * 10) / 10;
     const hourlyCostEur =
       Math.round(((actualThermalDemandKw / testCop) * electricityPrice) * 100) / 100;
-    const isCurrent = Math.abs(testCop - currentCop) < 0.25;
+    const isCurrent = Math.abs(testCop - currentCop) < 0.2;
 
     return {
       cop: testCop,
