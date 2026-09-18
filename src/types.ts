@@ -92,10 +92,13 @@ export interface SystemCalculations {
   
   // Speicherenergetik (6.000 L)
   totalStorageVolumeLiters: number;
-  totalStoredEnergyKwh: number; // Bezogen auf minUsableTemp
-  storedEnergyFullDeltaKwh: number; // Bezogen auf Kaltwasser (10°C)
+  totalStoredEnergyKwh: number; // Unmittelbar für 60°C TWW nutzbare Energie (Delta zu minUsableTemp)
+  storageImmediateUsableEnergyKwh: number; // Unmittelbar für 60°C TWW nutzbar
+  storageThermalContentFullDeltaKwh: number; // Gesamter thermischer Energieinhalt über Rücklauf
+  storedEnergyFullDeltaKwh: number; // Bezogen auf Kaltwasser (10°C) bzw. Rücklauf
   storageStateOfChargePercent: number; // 0 - 100%
   storageReheatTimeHours: number; // Zeit zur Vollladung bei aktiven Wärmeerzeugern
+  singleShowerEnergyKwh: number; // Dynamisch berechnete Energie für 1 Duschgang (kWh)
   
   // Bedarfs- und Zapfwerte
   activeShowersCount: number;
@@ -108,7 +111,10 @@ export interface SystemCalculations {
   // Frischwasserstationen Kapazität
   fwsTotalCapacityLmin: number;
   fwsNominalCapacityLmin: number; // 149.2 l/min bei 70/25°C Nennpunkt (Typenschild)
-  fwsCapacityUtilizationPercent: number;
+  fwsAvailableCapacityLmin?: number; // Reale Kapazität am aktuellen Betriebspunkt
+  fwsAvailableCapacityText: string; // z.B. "149.2 l/min (Nennpunkt 70°C)" oder "Nicht nachgewiesen bei 65°C"
+  fwsCapacityUtilizationPercent?: number; // undefined wenn nicht belastbar berechenbar
+  fwsUtilizationStatusText: string; // z.B. "82%" oder "Bei 65°C nicht belastbar berechenbar"
   fwsSufficient: boolean;
   fwsOperatingRating: 'NOMINAL_CONFIRMED_70C' | 'UNPROVEN_AT_65C_PRIMARY' | 'CRITICAL_UNDER_65C';
   fwsOperatingNotice: string; // Transparenter Hinweis zum Nenn- vs. 65°C-Prüfpunkt

@@ -699,16 +699,14 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                     </div>
 
                     <div className="flex justify-between items-center pt-1 border-t border-slate-200 text-slate-600">
-                      <span>Elektrische Leistung (Pel):</span>
+                      <span>Typenschild Pel,Nenn (A7/65°C):</span>
                       <span className="font-mono font-medium">{wp.electricalPowerKw} kW</span>
                     </div>
 
                     <div className="flex justify-between items-center text-slate-600">
-                      <span>Berechneter Arbeits-COP:</span>
+                      <span>QAHV Referenz-COP (A7/65°C):</span>
                       <span className="font-mono font-bold text-emerald-700">
-                        {wp.electricalPowerKw > 0
-                          ? (wp.thermalPowerKw / wp.electricalPowerKw).toFixed(2)
-                          : '0.00'}
+                        {(wp.thermalPowerKw / wp.electricalPowerKw).toFixed(2)} (Ref. 3,65)
                       </span>
                     </div>
                   </div>

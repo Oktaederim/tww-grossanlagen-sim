@@ -143,28 +143,43 @@ export function calculateSystemMetrics(
   // Typenschild-Nennleistung: 130 kW bei 70/25 °C Primär -> 10/60 °C Sekundär (37,3 l/min je FWS = 149,2 l/min gesamt)
   const effectiveFwsCount = Math.min(fws.count, Math.max(0, fws.activeStations));
   const fwsNominalCapacityLmin = Math.round(effectiveFwsCount * fws.ratedCapacityPerStationLmin * 10) / 10;
+  const isAtNominalPrimary = fws.primaryFlowTempC >= 70.0;
   const fwsTotalCapacityLmin = fwsNominalCapacityLmin;
+  const fwsAvailableCapacityLmin = isAtNominalPrimary ? fwsNominalCapacityLmin : undefined;
 
   let fwsOperatingRating: 'NOMINAL_CONFIRMED_70C' | 'UNPROVEN_AT_65C_PRIMARY' | 'CRITICAL_UNDER_65C' = 'NOMINAL_CONFIRMED_70C';
   let fwsOperatingNotice = '';
+  let fwsAvailableCapacityText = '';
+  let fwsUtilizationStatusText = '';
+  let fwsCapacityUtilizationPercent: number | undefined;
 
-  if (fws.primaryFlowTempC >= 70.0) {
+  if (isAtNominalPrimary) {
     fwsOperatingRating = 'NOMINAL_CONFIRMED_70C';
     fwsOperatingNotice = `Bestätigter Nennbetriebspunkt (Primär ${fws.primaryFlowTempC}°C ≥ 70°C, 10→60°C TWW): 130 kW bzw. 37,3 l/min je FWS (${fwsNominalCapacityLmin} l/min Kaskade).`;
+    fwsAvailableCapacityText = `${fwsNominalCapacityLmin.toFixed(1)} l/min (dokumentierter Nennpunkt)`;
+    fwsCapacityUtilizationPercent =
+      fwsNominalCapacityLmin > 0
+        ? Math.round((peakHotWaterFlowLmin / fwsNominalCapacityLmin) * 100)
+        : 0;
+    fwsUtilizationStatusText = `${fwsCapacityUtilizationPercent}%`;
   } else if (fws.primaryFlowTempC >= 64.0) {
     fwsOperatingRating = 'UNPROVEN_AT_65C_PRIMARY';
-    fwsOperatingNotice = `Prüfpunkt: Primär-Vorlauf ${fws.primaryFlowTempC}°C liegt unter dem Nennpunkt von 70°C. Die verfügbare Dauerleistung bei 65°C Primär-VL ist herstellerseitig noch nicht nachgewiesen (Nachrechnung/Prüfung erforderlich).`;
+    fwsOperatingNotice = `Primär-Vorlauf ${fws.primaryFlowTempC}°C liegt unter dem Nennpunkt von 70°C. Die verfügbare Dauerleistung bei 65°C Primär-VL ist herstellerseitig noch nicht nachgewiesen (Nachrechnung/Prüfung erforderlich).`;
+    fwsAvailableCapacityText = `Unbekannt / nicht nachgewiesen bei ${fws.primaryFlowTempC}°C (Nennwert bei 70°C: ${fwsNominalCapacityLmin.toFixed(1)} l/min)`;
+    fwsCapacityUtilizationPercent = undefined;
+    fwsUtilizationStatusText = `Auslastung bei ${fws.primaryFlowTempC}°C nicht belastbar berechenbar`;
   } else {
     fwsOperatingRating = 'CRITICAL_UNDER_65C';
     fwsOperatingNotice = `Kritischer Vorlauf: Primär ${fws.primaryFlowTempC}°C reicht kaum aus, um 60°C Warmwasser normgerecht zu garantieren (Pinch-Point-Unterschreitung möglich).`;
+    fwsAvailableCapacityText = `Nicht ausreichend für 60°C TWW`;
+    fwsCapacityUtilizationPercent = undefined;
+    fwsUtilizationStatusText = `Nicht belastbar / Untertemperatur`;
   }
 
-  const fwsCapacityUtilizationPercent =
-    fwsTotalCapacityLmin > 0
-      ? Math.round((peakHotWaterFlowLmin / fwsTotalCapacityLmin) * 100)
-      : (peakHotWaterFlowLmin > 0 ? 999 : 0);
-  const fwsSufficient = peakHotWaterFlowLmin <= fwsTotalCapacityLmin && effectiveFwsCount > 0;
-  const isHydraulicOverloaded = !fwsSufficient && peakHotWaterFlowLmin > 0;
+  const fwsSufficient = isAtNominalPrimary
+    ? (peakHotWaterFlowLmin <= fwsNominalCapacityLmin && effectiveFwsCount > 0)
+    : (effectiveFwsCount > 0 && fws.primaryFlowTempC >= 60.0);
+  const isHydraulicOverloaded = isAtNominalPrimary ? (!fwsSufficient && peakHotWaterFlowLmin > 0) : false;
 
   // Erforderlicher Primär-Heizwasservolumenstrom (l/h)
   const primaryDeltaT = Math.max(2, fws.primaryFlowTempC - fws.primaryReturnTempC);
@@ -215,8 +230,8 @@ export function calculateSystemMetrics(
       (deltaTop > 0 ? 2000 : 0) +
       (deltaMid > 0 ? 2000 : 0) +
       (deltaBottom > 0 ? 2000 : 0);
-    storageCalculationModeLabel = 'Stufe 3: Fühlerbasierte 3-Zonen-Messung';
-    storageCalculationExplanation = `Berechnung aus 3 Fühlerwerten (Oben: ${buffer.sensorTopTempC}°C, Mitte: ${buffer.sensorMidTempC}°C, Unten: ${buffer.sensorBottomTempC}°C). Reale Messwerte statt pauschaler Annahme.`;
+    storageCalculationModeLabel = 'Stufe 3: 3-Zonen-Näherung aus Fühlertemperaturen';
+    storageCalculationExplanation = `Näherung aus 3 Fühlertemperaturen (Oben: ${buffer.sensorTopTempC}°C, Mitte: ${buffer.sensorMidTempC}°C, Unten: ${buffer.sensorBottomTempC}°C) für je 2.000 L Zonen. Die Temperaturen sind Messwerte; das Energieergebnis bleibt ein Berechnungsmodell.`;
   } else {
     // Stufe 2: Praxis - Eingegebener nutzbarer Heißwasseranteil (manual_fraction)
     const fraction = Math.max(0.1, Math.min(1.0, buffer.hotLayerFraction ?? 0.6));
@@ -226,6 +241,14 @@ export function calculateSystemMetrics(
     storageCalculationModeLabel = 'Stufe 2: Eingegebener Heißwasseranteil (Simulationsannahme)';
     storageCalculationExplanation = `${Math.round(fraction * 100)}% Heißwasserschicht (${usableHotVolumeLiters.toLocaleString('de-DE')} L) bei T_oben = ${buffer.topTempC}°C oberhalb Mindestnutztemperatur ${buffer.minUsableTempC}°C.`;
   }
+
+  // Zwei Werte für den Praktiker:
+  // 1. Gesamter thermischer Energieinhalt über Rücklauf (z. B. 28-30 °C)
+  const storageThermalContentFullDeltaKwh = Math.round(
+    totalStorageVolumeLiters * SPECIFIC_HEAT_WATER_KWH_PER_L_K * Math.max(0, buffer.topTempC - buffer.bottomTempC) * 10
+  ) / 10;
+  // 2. Unmittelbar für 60°C TWW nutzbare Exergie/Energie (Delta zu minUsableTemp)
+  const storageImmediateUsableEnergyKwh = totalStoredEnergyKwh;
 
   // 5. Pinch-Point & Versorgbarkeit (ohne starres 4-K-Veto)
   let isThermalSupplyFeasible = true;
@@ -368,6 +391,12 @@ export function calculateSystemMetrics(
   const showerSessionEnergyKwh = Math.round(
     (showerSessionTotalHot60Liters * SPECIFIC_HEAT_WATER_KWH_PER_L_K * deltaTWarmCold) * 10
   ) / 10;
+
+  // Dynamisch berechnete Energie für 1 Einzeldusche:
+  // E = V_punkt_Misch * t_dusch * c * (T_misch - T_kalt) / 1000
+  const singleShowerEnergyKwh = Math.round(
+    (sanitary.showerPanelFlowLmin * sanitary.showerDurationMinutes * SPECIFIC_HEAT_WATER_KWH_PER_L_K * Math.max(1, sanitary.showerMixedTempC - fws.coldWaterInletTempC)) * 1000
+  ) / 1000;
 
   // Wiederaufladezeiten für genau diese entnommene Duschgang-Energie:
   const wpPower = totalWpThermalPowerKw > 0 ? totalWpThermalPowerKw : 120.0;
@@ -515,28 +544,28 @@ export function calculateSystemMetrics(
   let efficiencyStatus: 'OPTIMAL' | 'GOOD' | 'FAIR' | 'CRITICAL' = 'OPTIMAL';
   let efficiencyLabel = 'Optimaler Effizienzbereich';
   let efficiencyBadgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
-  let efficiencyDescription = `Hohe Arbeitszahl (${systemCop}) für Trinkwarmwasserbereitung (65°C Vorlauf).`;
+  let efficiencyDescription = `Berechneter Modell-COP auf Carnot-Basis (${systemCop}). Außerhalb des Referenzpunktes (A7/W9→65°C: COP 3,65) handelt es sich um eine Modellschätzung; Abgleich mit Hersteller-Leistungsdiagramm erforderlich.`;
 
-  if (systemCop >= 3.1) {
+  if (systemCop >= 3.3) {
     efficiencyStatus = 'OPTIMAL';
-    efficiencyLabel = 'Sehr gut (Hocheffizient)';
+    efficiencyLabel = 'Optimaler Bereich (Modell)';
     efficiencyBadgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
-    efficiencyDescription = `Sehr guter COP von ${systemCop} bei ΔT ${tempLiftK} K Temperaturhub. Sehr gute Kältemittel-Unterkühlung und ideale Pufferschichtung.`;
-  } else if (systemCop >= 2.6) {
+    efficiencyDescription = `Berechneter COP im günstigen Bereich (${systemCop} bei ΔT ${tempLiftK} K Hub). Außerhalb des dokumentierten Referenzpunktes (A7/W9→65°C: COP 3,65) handelt es sich um eine Modellschätzung; Abgleich mit Hersteller-Leistungsdaten erforderlich.`;
+  } else if (systemCop >= 2.8) {
     efficiencyStatus = 'GOOD';
-    efficiencyLabel = 'Normaler Standardbereich';
+    efficiencyLabel = 'Normaler Standardbereich (Modell)';
     efficiencyBadgeClass = 'bg-blue-100 text-blue-800 border-blue-300';
-    efficiencyDescription = `Typischer Auslegungspunkt (COP ${systemCop}) für Hochtemperatur-TWW-Bereitung (65°C Vorlauf, W7).`;
-  } else if (systemCop >= 2.1) {
+    efficiencyDescription = `Berechneter Modell-COP (${systemCop}) für Hochtemperatur-TWW-Bereitung. Außerhalb des Referenzpunktes handelt es sich um eine thermodynamische Näherung; Abgleich mit Datenblatt erforderlich.`;
+  } else if (systemCop >= 2.3) {
     efficiencyStatus = 'FAIR';
-    efficiencyLabel = 'Erhöhter Strombedarf';
+    efficiencyLabel = 'Erhöhter Strombedarf (Modell)';
     efficiencyBadgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
-    efficiencyDescription = `Großer Temperaturhub (ΔT = ${tempLiftK} K) oder erhöhte Pufferrücklauftemperatur.`;
+    efficiencyDescription = `Großer Temperaturhub (ΔT = ${tempLiftK} K) oder erhöhte Pufferrücklauftemperatur. Berechneter Modell-COP ${systemCop}; erhöhter elektrischer Leistungsbedarf.`;
   } else {
     efficiencyStatus = 'CRITICAL';
-    efficiencyLabel = 'Kritischer Bereich (Wärmetauscher zuschalten)';
+    efficiencyLabel = 'Kritischer Bereich (WT zuschalten)';
     efficiencyBadgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
-    efficiencyDescription = `Extrem ungünstiger Temperaturhub (COP < 2.1). Zuschaltung der 136 kW Zusatzheizung empfohlen!`;
+    efficiencyDescription = `Extrem ungünstiger Temperaturhub (Modell-COP < 2.3). Zuschaltung des 136 kW Plattenwärmetauschers empfohlen!`;
   }
 
   const monteurTips: string[] = [];
@@ -546,7 +575,7 @@ export function calculateSystemMetrics(
     );
   } else {
     monteurTips.push(
-      `Kühle Puffer-Rücklauftemperatur (${buffer.bottomTempC}°C) sichert optimale Kältemittelkondensation und hohe Arbeitszahl.`
+      `Kühle Puffer-Rücklauftemperatur (${buffer.bottomTempC}°C, Ziel: ≤ 30°C) begünstigt die transkritische CO2-Kältemittel-Unterkühlung.`
     );
   }
   if (avgSourceTempC < 4) {
@@ -555,7 +584,7 @@ export function calculateSystemMetrics(
     );
   }
   monteurTips.push(
-    `Temperaturhub: ΔT ${tempLiftK} K (${avgSourceTempC}°C Quelle → ${avgFlowTempC}°C Vorlauf). Gütegrad liegt bei realistischen ${carnotEfficiencyPercent}%.`
+    `Temperaturhub: ΔT ${tempLiftK} K (${avgSourceTempC}°C Quelle → ${avgFlowTempC}°C Vorlauf). Berechneter Carnot-Gütegrad: ca. ${carnotEfficiencyPercent}%.`
   );
 
   const sourceTestPoints = [-10, -5, 0, 2, 5, 7, 10, 15, 20];
@@ -621,9 +650,12 @@ export function calculateSystemMetrics(
     totalHeatGenerationPowerKw,
     totalStorageVolumeLiters,
     totalStoredEnergyKwh,
+    storageImmediateUsableEnergyKwh,
+    storageThermalContentFullDeltaKwh,
     storedEnergyFullDeltaKwh,
     storageStateOfChargePercent,
     storageReheatTimeHours,
+    singleShowerEnergyKwh,
     activeShowersCount,
     activeWashbasinsCount,
     peakMixedWaterFlowLmin: Math.round(peakMixedWaterFlowLmin * 10) / 10,
@@ -633,7 +665,10 @@ export function calculateSystemMetrics(
     coldWaterFlowLmin,
     fwsTotalCapacityLmin: Math.round(fwsTotalCapacityLmin * 10) / 10,
     fwsNominalCapacityLmin,
+    fwsAvailableCapacityLmin,
+    fwsAvailableCapacityText,
     fwsCapacityUtilizationPercent,
+    fwsUtilizationStatusText,
     fwsSufficient,
     fwsOperatingRating,
     fwsOperatingNotice,

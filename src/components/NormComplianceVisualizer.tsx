@@ -26,21 +26,21 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            Norm eingehalten
+            Sollwert erfüllt
           </span>
         );
       case 'WARNING':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
             <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-            Toleranzgrenze
+            Auffällig
           </span>
         );
       case 'ERROR':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
             <XCircle className="w-3.5 h-3.5 text-rose-600" />
-            Normverletzung
+            Prüfen
           </span>
         );
       default:
@@ -57,10 +57,10 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
         <div>
           <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-emerald-600" />
-            Automatische Normen-Prüfung & Trinkwasserhygiene
+            Betriebs- und Hygiene-Plausibilitätsprüfung (Orientierungshilfe nach DIN 1988 / DVGW W 551)
           </h2>
-          <p className="text-xs text-slate-500">
-            Automatische Echtzeit-Bewertung gegen DIN 1988-200/300, DVGW W 551, DIN 4708 und VDI 6023
+          <p className="text-xs text-slate-500 mt-1">
+            Orientierende Plausibilitätsprüfung der Anlagenbetriebsparameter. Ersetzt keine Messung, Rohrnetzberechnung, hydraulischen Abgleich oder akkreditierte Trinkwasserbeprobung vor Ort.
           </p>
         </div>
 
@@ -68,7 +68,7 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
         <div className="flex items-center gap-3 bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200">
           <div className="text-right">
             <span className="text-[10px] uppercase font-semibold text-slate-400 block">
-              Konformitäts-Index
+              Plausibilitäts-Index
             </span>
             <span
               className={`text-lg font-bold font-mono ${
@@ -83,7 +83,7 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
             </span>
           </div>
 
-          <div className="w-12 h-12 rounded-full border-4 border-slate-200 flex items-center justify-center relative">
+          <div className="w-16 h-12 rounded-full border-4 border-slate-200 flex items-center justify-center relative px-2">
             <div
               className={`text-xs font-bold ${
                 metrics.overallScorePercent >= 90
@@ -93,7 +93,7 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
                   : 'text-rose-600'
               }`}
             >
-              {metrics.overallStatus === 'OK' ? 'PASSED' : metrics.overallStatus === 'WARNING' ? 'TOL' : 'FAIL'}
+              {metrics.overallStatus === 'OK' ? 'ERFÜLLT' : metrics.overallStatus === 'WARNING' ? 'AUFFÄLLIG' : 'PRÜFEN'}
             </div>
           </div>
         </div>
@@ -144,7 +144,7 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
 
           <div className="mt-3 pt-2 border-t border-slate-200 text-[11px] text-slate-600">
             {normCompliance.w551OutletTemp.actual >= 60 ? (
-              <span className="text-emerald-700">Legionellen-Vermehrung zuverlässig gehemmt.</span>
+              <span className="text-emerald-700">Temperaturvorgabe nach W 551 rechnerisch eingehalten (≥ 60 °C am Austritt).</span>
             ) : (
               <span className="text-rose-700 font-medium">
                 Monteur-Aktion: FWS-Sollwert oder Puffervorlauf anheben!
@@ -293,7 +293,7 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
 
           <div className="mt-3 pt-2 border-t border-slate-200 text-[11px] text-slate-600">
             {normCompliance.threeLiterRule.actualVolumeL <= 3.0 ? (
-              <span className="text-emerald-700">Keine unzulässige Stagnation in Stichleitungen.</span>
+              <span className="text-emerald-700">3-Liter-Regel rechnerisch eingehalten (Leitungsinhalt &lt; 3 L).</span>
             ) : (
               <span className="text-rose-700 font-medium">
                 Monteur-Aktion: Zirkulationsleitung näher an Entnahmestellen heranführen!
@@ -322,20 +322,35 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
 
             <div className="space-y-1">
               <div className="flex justify-between text-xs font-mono">
-                <span>Auslastung: <strong>{normCompliance.fwsCapacityCheck.utilization} %</strong></span>
-                <span className="text-slate-500">Max: 100 %</span>
+                <span>
+                  Auslastung:{' '}
+                  <strong>
+                    {metrics.fwsCapacityUtilizationPercent !== undefined
+                      ? `${metrics.fwsCapacityUtilizationPercent} %`
+                      : 'Nicht nachgewiesen (65°C)'}
+                  </strong>
+                </span>
+                <span className="text-slate-500">
+                  {metrics.fwsCapacityUtilizationPercent !== undefined ? 'Max: 100 %' : 'Nennwert: 70°C'}
+                </span>
               </div>
               <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${
-                    normCompliance.fwsCapacityCheck.status === 'OK'
+                    metrics.fwsCapacityUtilizationPercent === undefined
+                      ? 'bg-amber-400'
+                      : normCompliance.fwsCapacityCheck.status === 'OK'
                       ? 'bg-emerald-500'
                       : normCompliance.fwsCapacityCheck.status === 'WARNING'
                       ? 'bg-amber-500'
                       : 'bg-rose-500'
                   }`}
                   style={{
-                    width: `${Math.min(100, normCompliance.fwsCapacityCheck.utilization)}%`,
+                    width: `${
+                      metrics.fwsCapacityUtilizationPercent !== undefined
+                        ? Math.min(100, metrics.fwsCapacityUtilizationPercent)
+                        : 100
+                    }%`,
                   }}
                 />
               </div>
@@ -343,8 +358,12 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
           </div>
 
           <div className="mt-3 pt-2 border-t border-slate-200 text-[11px] text-slate-600">
-            {normCompliance.fwsCapacityCheck.status === 'OK' ? (
-              <span className="text-emerald-700">4 Stationen decken die 10 Duschbereiche mit Reserve ab.</span>
+            {metrics.fwsCapacityUtilizationPercent === undefined ? (
+              <span className="text-amber-800 font-medium">
+                Hersteller-Leistungsdaten bei 65°C Primärvorlauf noch nicht nachgewiesen. Auslastung rechnerisch unbestimmt.
+              </span>
+            ) : normCompliance.fwsCapacityCheck.status === 'OK' ? (
+              <span className="text-emerald-700">4 Stationen decken die 10 Duschbereiche am bestätigten Nennpunkt (70°C) mit Reserve ab.</span>
             ) : (
               <span className="text-rose-700 font-medium">
                 Monteur-Aktion: Alle 4 FWS zuschalten oder Primärvorlauftemperatur anheben!
@@ -395,7 +414,7 @@ export const NormComplianceVisualizer: React.FC<NormComplianceVisualizerProps> =
 
           <div className="mt-3 pt-2 border-t border-slate-200 text-[11px] text-slate-600">
             <span>
-              Wasserwechsel alle 72 Stunden (VDI 6023) durch Duschzyklen oder automatische Spülstation gewährleistet.
+              Wasserwechsel alle 72 Stunden (VDI 6023) durch Duschzyklen oder automatische Spülstation sicherzustellen.
             </span>
           </div>
         </div>

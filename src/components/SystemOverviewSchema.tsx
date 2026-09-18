@@ -116,9 +116,9 @@ export const SystemOverviewSchema: React.FC<SystemOverviewSchemaProps> = ({
                     </span>
                   </div>
                   <div className="mt-1 flex items-center justify-between text-[11px] text-slate-400">
-                    <span>Pel: {wp.electricalPowerKw} kW</span>
-                    <span className="text-blue-400 font-medium">
-                      COP {(wp.thermalPowerKw / wp.electricalPowerKw).toFixed(2)}
+                    <span title="Typenschild-Nennwert bei A7/W9→65°C">Pel,Nenn: {wp.electricalPowerKw} kW</span>
+                    <span className="text-blue-400 font-medium" title="QAHV Referenz-COP am Prüfpunkt">
+                      COP Ref {(wp.thermalPowerKw / wp.electricalPowerKw).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -264,7 +264,9 @@ export const SystemOverviewSchema: React.FC<SystemOverviewSchemaProps> = ({
                   metrics.fwsSufficient ? 'text-emerald-400 bg-emerald-950' : 'text-rose-400 bg-rose-950'
                 }`}
               >
-                {metrics.fwsCapacityUtilizationPercent}% Last
+                {metrics.fwsCapacityUtilizationPercent !== undefined
+                  ? `${metrics.fwsCapacityUtilizationPercent}% Last`
+                  : 'Auslastung unbestimmt (65°C)'}
               </span>
             </div>
 

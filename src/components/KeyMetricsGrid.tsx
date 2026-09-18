@@ -280,12 +280,12 @@ export const KeyMetricsGrid: React.FC<KeyMetricsGridProps> = ({
           <div>
             <div className="flex items-center justify-between text-slate-500 mb-1">
               <span className="text-xs font-semibold uppercase tracking-wider">
-                Nutzbare Energie
+                Nutzbare Energie (Näherung)
               </span>
               <Database className="w-4 h-4 text-blue-500" />
             </div>
             <div className="text-xl sm:text-2xl font-bold text-slate-900">
-              {metrics.totalStoredEnergyKwh}{' '}
+              {metrics.storageImmediateUsableEnergyKwh !== undefined ? metrics.storageImmediateUsableEnergyKwh : metrics.totalStoredEnergyKwh}{' '}
               <span className="text-sm font-medium text-slate-500">kWh</span>
             </div>
             <div className="text-[10px] text-cyan-800 font-medium truncate mt-0.5" title={metrics.storageCalculationModeLabel}>
@@ -294,13 +294,15 @@ export const KeyMetricsGrid: React.FC<KeyMetricsGridProps> = ({
           </div>
           <div className="mt-2 pt-1.5 border-t border-slate-100 space-y-0.5 text-[11px] text-slate-600">
             <div className="flex items-center justify-between">
-              <span className="text-slate-500">Gesamtinhalt über RL:</span>
-              <span className="font-mono font-semibold text-slate-800">{metrics.storedEnergyFullDeltaKwh} kWh</span>
+              <span className="text-slate-500">Gesamt-Wärmeinhalt:</span>
+              <span className="font-mono font-semibold text-slate-800">
+                {metrics.storageThermalContentFullDeltaKwh ?? metrics.storedEnergyFullDeltaKwh} kWh
+              </span>
             </div>
             <div className="flex items-center justify-between">
               <span>6.000 L Speicher</span>
               <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded text-[10px]">
-                {metrics.storageStateOfChargePercent}% voll
+                {metrics.storageStateOfChargePercent}% geladen
               </span>
             </div>
           </div>
@@ -370,17 +372,21 @@ export const KeyMetricsGrid: React.FC<KeyMetricsGridProps> = ({
             </div>
             <div
               className={`text-xl sm:text-2xl font-bold ${
-                metrics.fwsCapacityUtilizationPercent > 100
+                metrics.fwsCapacityUtilizationPercent === undefined
+                  ? 'text-amber-600 text-base sm:text-lg'
+                  : metrics.fwsCapacityUtilizationPercent > 100
                   ? 'text-rose-600'
                   : metrics.fwsCapacityUtilizationPercent > 85
                   ? 'text-amber-600'
                   : 'text-slate-900'
               }`}
             >
-              {metrics.fwsCapacityUtilizationPercent}%
+              {metrics.fwsCapacityUtilizationPercent !== undefined
+                ? `${metrics.fwsCapacityUtilizationPercent}%`
+                : 'Nicht nachgewiesen'}
             </div>
             <div className="text-[10px] text-slate-500 truncate mt-0.5">
-              Nennkapazität: {metrics.fwsTotalCapacityLmin} l/min (70/25°C)
+              {metrics.fwsAvailableCapacityText ?? `Nennkapazität: ${metrics.fwsNominalCapacityLmin} l/min (70°C)`}
             </div>
           </div>
           <div className="mt-1 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600">
